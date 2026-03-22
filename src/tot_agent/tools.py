@@ -184,7 +184,9 @@ TOOL_DEFINITIONS: list[dict] = [
         "name": "fetch_book_covers",
         "description": (
             "Search for real book cover images from Open Library / Google Books. "
-            "Returns a list of covers with title, author, and a direct image URL."
+            "Returns a list of covers with title, author, and a direct image URL. "
+            "Pass the cover_url to upload_cover_image when the form expects a file upload "
+            "rather than a URL string."
         ),
         "input_schema": {
             "type": "object",
@@ -200,6 +202,29 @@ TOOL_DEFINITIONS: list[dict] = [
                 },
             },
             "required": ["query"],
+        },
+    },
+    {
+        "name": "upload_cover_image",
+        "description": (
+            "Download a book cover image from a URL and upload it as a file to a "
+            "<input type='file'> element on the current page. "
+            "Use this instead of pasting a URL into a text field when the form expects "
+            "an actual file upload. The cover_url comes from fetch_book_covers."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "cover_url": {
+                    "type": "string",
+                    "description": "Direct URL of the cover image to download and upload",
+                },
+                "selector": {
+                    "type": "string",
+                    "description": "CSS selector of the <input type='file'> element",
+                },
+            },
+            "required": ["cover_url", "selector"],
         },
     },
 ]
@@ -362,6 +387,18 @@ async def dispatch(
                         ],
                     },
                 }
+
+            case "upload_cover_image":
+                import os
+
+                from tot_agent.covers import download_cover_image
+
+                tmp_path = download_cover_image(tool_input["cover_url"])
+                try:
+                    result = await bm.upload_file(tool_input["selector"], tmp_path)
+                finally:
+                    os.unlink(tmp_path)
+                return result
 
             case _:
                 logger.error("Unknown tool requested: %r", tool_name)

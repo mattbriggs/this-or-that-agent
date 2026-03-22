@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import io
 import logging
-from unittest.mock import AsyncMock, MagicMock
+import sys
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from rich.console import Console
@@ -188,6 +189,41 @@ class TestBrowserAgentRun:
 
         with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
             BrowserAgent(bm=browser_manager, api_key=None)
+
+    async def test_run_uses_async_client_directly(self, browser_manager):
+        """Line 366: covers the `await create(**kwargs)` async-client branch."""
+        from tot_agent.agent import BrowserAgent
+
+        mock_client = MagicMock()
+        mock_client.messages.create = AsyncMock(
+            return_value=_make_message_response("Async done!")
+        )
+        agent = BrowserAgent(bm=browser_manager, observers=[], client=mock_client)
+        result = await agent.run("Do something.")
+        assert "Async done!" in result
+        mock_client.messages.create.assert_awaited_once()
+
+
+class TestCreateDefaultClient:
+    """Lines 267-274: _create_default_client happy path and ImportError branch."""
+
+    def test_raises_when_anthropic_not_installed(self, browser_manager):
+        from tot_agent.agent import _create_default_client
+
+        with patch.dict(sys.modules, {"anthropic": None}):
+            with pytest.raises(RuntimeError, match="anthropic is not installed"):
+                _create_default_client("fake_key")
+
+    def test_returns_client_with_api_key(self):
+        import anthropic
+
+        from tot_agent.agent import _create_default_client
+
+        with patch.object(anthropic, "Anthropic") as mock_cls:
+            mock_cls.return_value = MagicMock()
+            client = _create_default_client("my_key")
+            mock_cls.assert_called_once_with(api_key="my_key")
+            assert client is mock_cls.return_value
 
     def test_add_remove_observer(self, browser_manager, mock_anthropic_client):
         from tot_agent.agent import AgentEvent, AgentObserver, BrowserAgent

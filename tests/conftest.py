@@ -40,6 +40,7 @@ def mock_page():
     page.keyboard = AsyncMock()
     page.keyboard.press = AsyncMock(return_value=None)
     page.evaluate = AsyncMock(return_value="js_result")
+    page.set_input_files = AsyncMock(return_value=None)
 
     text_locator = AsyncMock()
     text_locator.first = AsyncMock()

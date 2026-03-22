@@ -10,6 +10,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import httpx
+import pytest
 
 
 def make_response(
@@ -316,6 +317,95 @@ class TestCoverFetcher:
         assert len(pairs) == 2
         for left, right in pairs:
             assert left.title != right.title
+
+    def test_fetch_breaks_early_when_count_satisfied_by_first_source(self):
+        """Line 275: the `break` inside the sources loop is hit when the pool
+        is already full before the second source is queried."""
+        from tot_agent.covers import BookCover, CoverFetcher, CoverSource
+
+        call_counts: dict[str, int] = {"first": 0, "second": 0}
+
+        class FirstSource(CoverSource):
+            def search(self, query: str, limit: int) -> list[BookCover]:
+                call_counts["first"] += 1
+                return [
+                    BookCover(f"Book {i}", "Author", f"https://x.com/{i}.jpg", "test")
+                    for i in range(limit)
+                ]
+
+        class SecondSource(CoverSource):
+            def search(self, query: str, limit: int) -> list[BookCover]:
+                call_counts["second"] += 1
+                return []
+
+        fetcher = CoverFetcher(sources=[FirstSource(), SecondSource()])
+        covers = fetcher.fetch("any", count=2)
+        assert len(covers) == 2
+        assert call_counts["first"] == 1
+        assert call_counts["second"] == 0  # never reached — break fired
+
+
+# ---------------------------------------------------------------------------
+# download_cover_image
+# ---------------------------------------------------------------------------
+
+
+def make_image_response(url: str, content: bytes, content_type: str) -> httpx.Response:
+    request = httpx.Request("GET", url)
+    return httpx.Response(
+        200,
+        content=content,
+        headers={"content-type": content_type},
+        request=request,
+    )
+
+
+class TestDownloadCoverImage:
+    def test_writes_jpeg_to_temp_file(self):
+        import os
+
+        from tot_agent.covers import download_cover_image
+
+        fake_bytes = b"\xff\xd8\xff" + b"\x00" * 100
+        url = "https://example.com/cover.jpg"
+        with patch(
+            "tot_agent.covers.httpx.get",
+            return_value=make_image_response(url, fake_bytes, "image/jpeg"),
+        ):
+            path = download_cover_image(url)
+
+        try:
+            assert os.path.exists(path)
+            assert path.endswith(".jpg")
+            assert open(path, "rb").read() == fake_bytes
+        finally:
+            os.unlink(path)
+
+    def test_uses_png_extension_for_png_content_type(self):
+        import os
+
+        from tot_agent.covers import download_cover_image
+
+        url = "https://example.com/cover.png"
+        with patch(
+            "tot_agent.covers.httpx.get",
+            return_value=make_image_response(url, b"\x89PNG", "image/png"),
+        ):
+            path = download_cover_image(url)
+
+        try:
+            assert path.endswith(".png")
+        finally:
+            os.unlink(path)
+
+    def test_raises_on_http_error(self):
+        from tot_agent.covers import download_cover_image
+
+        request = httpx.Request("GET", "https://example.com/missing.jpg")
+        bad_response = httpx.Response(404, request=request)
+        with patch("tot_agent.covers.httpx.get", return_value=bad_response):
+            with pytest.raises(httpx.HTTPStatusError):
+                download_cover_image("https://example.com/missing.jpg")
 
 
 # ---------------------------------------------------------------------------

@@ -4,7 +4,9 @@ tests/unit/test_cli.py — Offline CLI tests using Click's CliRunner.
 
 from __future__ import annotations
 
-from unittest.mock import patch
+import asyncio
+import logging
+from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
@@ -82,3 +84,56 @@ class TestCli:
             result = runner.invoke(cli, ["covers", "sci-fi"])
         assert result.exit_code == 0
         assert "No covers found" in result.output
+
+    def test_configure_logging_adds_file_handler(self, tmp_path):
+        """Line 63: FileHandler branch in _configure_logging."""
+        from tot_agent.cli import _configure_logging
+
+        log_file = str(tmp_path / "agent.log")
+        with patch("logging.basicConfig") as mock_basic:
+            _configure_logging("WARNING", log_file=log_file)
+            _, kwargs = mock_basic.call_args
+            handler_types = [type(h).__name__ for h in kwargs["handlers"]]
+            assert "FileHandler" in handler_types
+
+    def test_run_agent_body_executes(self):
+        """Lines 92-111: exercise _run_agent up to asyncio.run."""
+        from tot_agent.cli import _run_agent
+
+        with patch("asyncio.run") as mock_run:
+            _run_agent("Test goal", False, None, None, None)
+        mock_run.assert_called_once()
+        # Close the coroutine so Python doesn't warn about it being unawaited.
+        mock_run.call_args[0][0].close()
+
+    def test_vote_command_with_valid_user(self):
+        """Lines 199-200: vote command happy path with a known user."""
+        from tot_agent.cli import cli
+
+        runner = CliRunner()
+        with patch("tot_agent.cli._run_agent") as run_agent:
+            result = runner.invoke(cli, ["vote", "--user", "alice"])
+        assert result.exit_code == 0
+        run_agent.assert_called_once()
+        goal_text = run_agent.call_args.args[0]
+        assert "alice" in goal_text
+
+    def test_simulate_command(self):
+        """Lines 210-212: simulate command builds goal and calls _run_agent."""
+        from tot_agent.cli import cli
+
+        runner = CliRunner()
+        with patch("tot_agent.cli._run_agent") as run_agent:
+            result = runner.invoke(cli, ["simulate", "--votes-each", "3"])
+        assert result.exit_code == 0
+        run_agent.assert_called_once()
+
+    def test_seed_command(self):
+        """Lines 223-225: seed command builds goal and calls _run_agent."""
+        from tot_agent.cli import cli
+
+        runner = CliRunner()
+        with patch("tot_agent.cli._run_agent") as run_agent:
+            result = runner.invoke(cli, ["seed", "--tests", "3", "--vote-rounds", "2"])
+        assert result.exit_code == 0
+        run_agent.assert_called_once()

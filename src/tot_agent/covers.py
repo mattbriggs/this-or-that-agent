@@ -24,7 +24,9 @@ Example::
 from __future__ import annotations
 
 import logging
+import os
 import random
+import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -334,6 +336,43 @@ class CoverFetcher:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
+
+_IMAGE_CONTENT_TYPE_EXT: dict[str, str] = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/bmp": ".bmp",
+}
+
+
+def download_cover_image(url: str, timeout: int = 10) -> str:
+    """Download a cover image from *url* to a temporary local file.
+
+    The caller is responsible for deleting the file when it is no longer needed
+    (e.g. after a browser file-upload completes).
+
+    :param str url: Direct URL of the image to download.
+    :param int timeout: HTTP timeout in seconds.  Defaults to ``10``.
+    :returns: Absolute path to the downloaded temporary file.
+    :rtype: str
+    :raises httpx.HTTPError: If the download fails or returns a non-2xx status.
+    """
+    resp = httpx.get(url, timeout=timeout, follow_redirects=True)
+    resp.raise_for_status()
+
+    content_type = resp.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+    ext = _IMAGE_CONTENT_TYPE_EXT.get(content_type, ".jpg")
+
+    fd, path = tempfile.mkstemp(suffix=ext, prefix="cover_")
+    try:
+        os.write(fd, resp.content)
+    finally:
+        os.close(fd)
+
+    logger.debug("Downloaded %r to %r (%d bytes)", url, path, len(resp.content))
+    return path
 
 
 def verify_cover_url(url: str, timeout: int = 5) -> bool:

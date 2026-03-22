@@ -476,3 +476,30 @@ class BrowserManager:
             action="wait_for_page_ready",
             timeout_ms=timeout,
         )
+
+    async def upload_file(self, selector: str, file_path: str) -> dict[str, Any]:
+        """Set a local file on a ``<input type="file">`` element via Playwright.
+
+        :param str selector: CSS selector of the file input element.
+        :param str file_path: Absolute path to the local file to upload.
+        :returns: Structured result dict.
+        :rtype: dict[str, Any]
+        """
+        try:
+            await self.active_page.set_input_files(
+                selector, file_path, timeout=ACTION_TIMEOUT_MS
+            )
+            logger.debug("Set input files %r on selector %r", file_path, selector)
+            return success_result(
+                f"Uploaded file to {selector}",
+                action="upload_file",
+                selector=selector,
+            )
+        except Exception as exc:
+            logger.warning("upload_file failed for %r: %s", selector, exc)
+            return failure_result(
+                f"Unable to upload file to {selector!r}",
+                error=str(exc),
+                action="upload_file",
+                selector=selector,
+            )

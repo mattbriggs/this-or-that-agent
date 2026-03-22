@@ -10,6 +10,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 
 class TestBrowserManagerLifecycle:
     """Tests for __aenter__ / __aexit__ lifecycle."""
@@ -21,6 +25,25 @@ class TestBrowserManagerLifecycle:
         with patch.dict(sys.modules, {"playwright": None, "playwright.async_api": None}):
             with pytest.raises(RuntimeError, match="playwright is not installed"):
                 await bm.__aenter__()
+
+    async def test_aenter_launches_browser_and_returns_self(self):
+        """Lines 94-100: happy path through __aenter__."""
+        from tot_agent.browser import BrowserManager
+
+        bm = BrowserManager(headless=True)
+        mock_pw = MagicMock()
+        mock_browser = AsyncMock()
+        mock_pw.chromium.launch = AsyncMock(return_value=mock_browser)
+
+        mock_playwright_obj = AsyncMock()
+        mock_playwright_obj.start = AsyncMock(return_value=mock_pw)
+
+        with patch("playwright.async_api.async_playwright", return_value=mock_playwright_obj):
+            result = await bm.__aenter__()
+
+        assert result is bm
+        assert bm._pw is mock_pw
+        assert bm._browser is mock_browser
 
     async def test_aexit_closes_all_contexts(self, mock_browser, mock_context, mock_page):
         from tot_agent.browser import BrowserManager
@@ -52,6 +75,16 @@ class TestSwitchUser:
         result = await browser_manager.switch_user("test_user")
         assert result["ok"] is True
         assert result["data"]["username"] == "test_user"
+
+
+class TestEnsureContext:
+    async def test_raises_when_browser_not_started(self):
+        """Line 126: _ensure_context raises RuntimeError when _browser is None."""
+        from tot_agent.browser import BrowserManager
+
+        bm = BrowserManager()  # _browser is None
+        with pytest.raises(RuntimeError, match="Browser not started"):
+            await bm.switch_user("alice")
 
 
 class TestActivePage:
@@ -198,12 +231,26 @@ class TestPressKey:
         assert result["data"]["key"] == "Enter"
         mock_page.keyboard.press.assert_awaited_once_with("Enter")
 
+    async def test_press_key_returns_failure_on_error(self, browser_manager, mock_page):
+        """Lines 392-394: press_key failure branch."""
+        mock_page.keyboard.press = AsyncMock(side_effect=Exception("Key error"))
+        result = await browser_manager.press_key("Enter")
+        assert result["ok"] is False
+        assert "Key error" in result["error"]
+
 
 class TestScrollDown:
     async def test_scroll_down_confirmation(self, browser_manager, mock_page):
         result = await browser_manager.scroll_down()
         assert result["ok"] is True
         mock_page.keyboard.press.assert_awaited_once_with("End")
+
+    async def test_scroll_down_returns_failure_on_error(self, browser_manager, mock_page):
+        """Lines 415-417: scroll_down failure branch."""
+        mock_page.keyboard.press = AsyncMock(side_effect=Exception("Scroll error"))
+        result = await browser_manager.scroll_down()
+        assert result["ok"] is False
+        assert "Scroll error" in result["error"]
 
 
 class TestEvaluate:
@@ -231,3 +278,17 @@ class TestWaitForPageReady:
         result = await browser_manager.wait_for_page_ready()
         assert result["ok"] is False
         assert result["recoverable"] is True
+
+
+class TestUploadFile:
+    async def test_upload_file_success(self, browser_manager, mock_page):
+        result = await browser_manager.upload_file("input[type='file']", "/tmp/cover_abc.jpg")
+        assert result["ok"] is True
+        assert result["data"]["selector"] == "input[type='file']"
+        mock_page.set_input_files.assert_awaited_once()
+
+    async def test_upload_file_returns_failure_on_error(self, browser_manager, mock_page):
+        mock_page.set_input_files = AsyncMock(side_effect=Exception("No such element"))
+        result = await browser_manager.upload_file("input[type='file']", "/tmp/cover_abc.jpg")
+        assert result["ok"] is False
+        assert "No such element" in result["error"]

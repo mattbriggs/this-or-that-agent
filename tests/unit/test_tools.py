@@ -58,6 +58,7 @@ class TestToolDefinitions:
             "switch_user",
             "login",
             "fetch_book_covers",
+            "upload_cover_image",
         }
         actual = {tool["name"] for tool in TOOL_DEFINITIONS}
         assert expected.issubset(actual), f"Missing tools: {expected - actual}"
@@ -237,6 +238,52 @@ class TestDispatch:
         assert result["ok"] is False
         assert result["data"]["failed_step"] == "navigate"
 
+    async def test_login_fails_at_fill_username(self, browser_manager):
+        """Line 320: login bails out when filling the username field fails."""
+        from tot_agent.tools import dispatch
+
+        browser_manager.navigate = AsyncMock(return_value=ok_result("ok"))
+        browser_manager.fill = AsyncMock(
+            return_value=error_result("no username field", error="no field")
+        )
+        result = await dispatch(
+            "login", {"username": "alice", "password": "pw"}, browser_manager
+        )
+        assert result["ok"] is False
+        assert result["data"]["failed_step"] == "fill_username"
+
+    async def test_login_fails_at_fill_password(self, browser_manager):
+        """Line 331: login bails out when filling the password field fails."""
+        from tot_agent.tools import dispatch
+
+        browser_manager.navigate = AsyncMock(return_value=ok_result("ok"))
+        browser_manager.fill = AsyncMock(
+            side_effect=[
+                ok_result("ok"),
+                error_result("no password field", error="no field"),
+            ]
+        )
+        result = await dispatch(
+            "login", {"username": "alice", "password": "pw"}, browser_manager
+        )
+        assert result["ok"] is False
+        assert result["data"]["failed_step"] == "fill_password"
+
+    async def test_login_fails_at_submit(self, browser_manager):
+        """Line 342: login bails out when the submit key-press fails."""
+        from tot_agent.tools import dispatch
+
+        browser_manager.navigate = AsyncMock(return_value=ok_result("ok"))
+        browser_manager.fill = AsyncMock(return_value=ok_result("ok"))
+        browser_manager.press_key = AsyncMock(
+            return_value=error_result("key press failed", error="timeout")
+        )
+        result = await dispatch(
+            "login", {"username": "alice", "password": "pw"}, browser_manager
+        )
+        assert result["ok"] is False
+        assert result["data"]["failed_step"] == "submit"
+
     async def test_fetch_book_covers_tool(self, browser_manager):
         from tot_agent.covers import BookCover
         from tot_agent.tools import dispatch
@@ -260,3 +307,38 @@ class TestDispatch:
         result = await dispatch("navigate", {}, browser_manager)
         assert result["ok"] is False
         assert "missing required input" in result["message"]
+
+    async def test_upload_cover_image_tool(self, browser_manager):
+        from tot_agent.tools import dispatch
+
+        browser_manager.upload_file = AsyncMock(
+            return_value=ok_result("Uploaded file to input[type='file']", selector="input[type='file']")
+        )
+        with patch("tot_agent.covers.download_cover_image", return_value="/tmp/cover_test.jpg"), \
+             patch("os.unlink") as mock_unlink:
+            result = await dispatch(
+                "upload_cover_image",
+                {"cover_url": "https://example.com/cover.jpg", "selector": "input[type='file']"},
+                browser_manager,
+            )
+
+        assert result["ok"] is True
+        browser_manager.upload_file.assert_awaited_once_with("input[type='file']", "/tmp/cover_test.jpg")
+        mock_unlink.assert_called_once_with("/tmp/cover_test.jpg")
+
+    async def test_upload_cover_image_cleans_up_on_upload_failure(self, browser_manager):
+        from tot_agent.tools import dispatch
+
+        browser_manager.upload_file = AsyncMock(
+            return_value=error_result("Unable to upload", error="No element")
+        )
+        with patch("tot_agent.covers.download_cover_image", return_value="/tmp/cover_fail.jpg"), \
+             patch("os.unlink") as mock_unlink:
+            result = await dispatch(
+                "upload_cover_image",
+                {"cover_url": "https://example.com/cover.jpg", "selector": "input[type='file']"},
+                browser_manager,
+            )
+
+        assert result["ok"] is False
+        mock_unlink.assert_called_once_with("/tmp/cover_fail.jpg")
