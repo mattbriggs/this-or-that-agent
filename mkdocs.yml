@@ -83,6 +83,7 @@ nav:
       - browser: api/browser.md
       - covers: api/covers.md
       - tools: api/tools.md
+      - results: api/results.md
       - config: api/config.md
       - cli: api/cli.md
   - Design:

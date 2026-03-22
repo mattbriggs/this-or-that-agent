@@ -11,6 +11,8 @@ graph TD
     Agent --> Config
     Tools --> Browser
     Tools --> Covers["covers.py<br/>CoverFetcher + Sources"]
+    Tools --> Results["results.py<br/>ActionResult helpers"]
+    Browser --> Results
     Covers --> Config
 ```
 
@@ -20,5 +22,6 @@ graph TD
 | [browser](browser.md) | Playwright browser context pool |
 | [covers](covers.md) | Book cover fetching with Strategy pattern |
 | [tools](tools.md) | Claude tool schemas and dispatcher |
+| [results](results.md) | Structured action result helpers |
 | [config](config.md) | Configuration, SimUser, env vars |
 | [cli](cli.md) | Click CLI commands |
