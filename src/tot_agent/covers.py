@@ -24,10 +24,11 @@ Example::
 from __future__ import annotations
 
 import logging
+import os
 import random
+import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 
@@ -50,23 +51,18 @@ logger: logging.Logger = logging.getLogger(__name__)
 class BookCover:
     """Metadata and image URL for a single book cover.
 
-    :param title: Book title.
-    :type title: str
-    :param author: Primary author name.
-    :type author: str
-    :param cover_url: Direct URL to the cover image (HTTPS).
-    :type cover_url: str
-    :param source: Originating data source identifier (e.g. ``"openlibrary"``).
-    :type source: str
-    :param isbn: ISBN-10 or ISBN-13, if available.
-    :type isbn: str or None
+    :param str title: Book title.
+    :param str author: Primary author name.
+    :param str cover_url: Direct URL to the cover image (HTTPS).
+    :param str source: Originating data source identifier (e.g. ``"openlibrary"``).
+    :param str or None isbn: ISBN-10 or ISBN-13, if available.
     """
 
     title: str
     author: str
     cover_url: str
     source: str
-    isbn: Optional[str] = None
+    isbn: str | None = None
 
     def __str__(self) -> str:
         return f'"{self.title}" by {self.author} — {self.cover_url}'
@@ -94,10 +90,8 @@ class CoverSource(ABC):
     def search(self, query: str, limit: int) -> list[BookCover]:
         """Search for book covers matching *query*.
 
-        :param query: Free-text search query (title, author, or genre).
-        :type query: str
-        :param limit: Maximum number of results to return.
-        :type limit: int
+        :param str query: Free-text search query (title, author, or genre).
+        :param int limit: Maximum number of results to return.
         :returns: List of matching book covers (may be empty).
         :rtype: list[BookCover]
         """
@@ -113,8 +107,7 @@ class OpenLibrarySource(CoverSource):
 
     This is the primary source.  No API key is required.
 
-    :param timeout: HTTP request timeout in seconds.  Defaults to ``10``.
-    :type timeout: int
+    :param int timeout: HTTP request timeout in seconds.  Defaults to ``10``.
     """
 
     def __init__(self, timeout: int = 10) -> None:
@@ -123,10 +116,8 @@ class OpenLibrarySource(CoverSource):
     def search(self, query: str, limit: int) -> list[BookCover]:
         """Search Open Library and return books that have cover images.
 
-        :param query: Search query string.
-        :type query: str
-        :param limit: Maximum number of covers to return.
-        :type limit: int
+        :param str query: Search query string.
+        :param int limit: Maximum number of covers to return.
         :returns: List of :class:`BookCover` objects with Open Library image URLs.
         :rtype: list[BookCover]
         """
@@ -152,7 +143,7 @@ class OpenLibrarySource(CoverSource):
                 authors = doc.get("author_name", ["Unknown Author"])
                 author = authors[0] if authors else "Unknown Author"
                 isbn_list = doc.get("isbn", [])
-                isbn: Optional[str] = isbn_list[0] if isbn_list else None
+                isbn: str | None = isbn_list[0] if isbn_list else None
                 url = OPEN_LIBRARY_COVER_URL.format(cover_id=cover_id)
                 covers.append(
                     BookCover(
@@ -176,8 +167,7 @@ class GoogleBooksSource(CoverSource):
 
     No API key is required for low-volume requests.
 
-    :param timeout: HTTP request timeout in seconds.  Defaults to ``10``.
-    :type timeout: int
+    :param int timeout: HTTP request timeout in seconds.  Defaults to ``10``.
     """
 
     def __init__(self, timeout: int = 10) -> None:
@@ -186,10 +176,8 @@ class GoogleBooksSource(CoverSource):
     def search(self, query: str, limit: int) -> list[BookCover]:
         """Search the Google Books API and return books that have cover images.
 
-        :param query: Search query string.
-        :type query: str
-        :param limit: Maximum number of covers to return.
-        :type limit: int
+        :param str query: Search query string.
+        :param int limit: Maximum number of covers to return.
         :returns: List of :class:`BookCover` objects with Google Books image URLs.
         :rtype: list[BookCover]
         """
@@ -210,7 +198,7 @@ class GoogleBooksSource(CoverSource):
             for item in items:
                 info = item.get("volumeInfo", {})
                 image_links = info.get("imageLinks", {})
-                cover_url: Optional[str] = (
+                cover_url: str | None = (
                     image_links.get("extraLarge")
                     or image_links.get("large")
                     or image_links.get("medium")
@@ -249,9 +237,8 @@ class CoverFetcher:
     Sources are queried in order until *count* unique covers have been gathered.
     Results are deduplicated by normalised title.
 
-    :param sources: Ordered list of sources to query.  Defaults to
+    :param list[CoverSource] or None sources: Ordered list of sources to query.  Defaults to
         ``[OpenLibrarySource(), GoogleBooksSource()]``.
-    :type sources: list[CoverSource] or None
 
     Example::
 
@@ -259,7 +246,7 @@ class CoverFetcher:
         covers = fetcher.fetch("mystery thriller", count=3)
     """
 
-    def __init__(self, sources: Optional[list[CoverSource]] = None) -> None:
+    def __init__(self, sources: list[CoverSource] | None = None) -> None:
         self._sources: list[CoverSource] = sources or [
             OpenLibrarySource(),
             GoogleBooksSource(),
@@ -275,10 +262,8 @@ class CoverFetcher:
         Tries each configured source in order, deduplicates by title, and
         returns up to *count* results.
 
-        :param query: Free-text search query.
-        :type query: str
-        :param count: Number of covers to return.
-        :type count: int
+        :param str query: Free-text search query.
+        :param int count: Number of covers to return.
         :returns: List of unique :class:`BookCover` objects (length <= *count*).
         :rtype: list[BookCover]
         """
@@ -308,8 +293,7 @@ class CoverFetcher:
 
         Useful for seeding A/B tests without repetition within a pair.
 
-        :param pair_count: Number of cover pairs to generate.
-        :type pair_count: int
+        :param int pair_count: Number of cover pairs to generate.
         :returns: List of 2-tuples, each containing two distinct
             :class:`BookCover` objects.
         :rtype: list[tuple[BookCover, BookCover]]
@@ -335,8 +319,7 @@ class CoverFetcher:
     def _deduplicate(covers: list[BookCover]) -> list[BookCover]:
         """Remove covers with duplicate normalised titles.
 
-        :param covers: Raw list possibly containing duplicates.
-        :type covers: list[BookCover]
+        :param list[BookCover] covers: Raw list possibly containing duplicates.
         :returns: Deduplicated list preserving original order.
         :rtype: list[BookCover]
         """
@@ -355,13 +338,48 @@ class CoverFetcher:
 # ---------------------------------------------------------------------------
 
 
+_IMAGE_CONTENT_TYPE_EXT: dict[str, str] = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/bmp": ".bmp",
+}
+
+
+def download_cover_image(url: str, timeout: int = 10) -> str:
+    """Download a cover image from *url* to a temporary local file.
+
+    The caller is responsible for deleting the file when it is no longer needed
+    (e.g. after a browser file-upload completes).
+
+    :param str url: Direct URL of the image to download.
+    :param int timeout: HTTP timeout in seconds.  Defaults to ``10``.
+    :returns: Absolute path to the downloaded temporary file.
+    :rtype: str
+    :raises httpx.HTTPError: If the download fails or returns a non-2xx status.
+    """
+    resp = httpx.get(url, timeout=timeout, follow_redirects=True)
+    resp.raise_for_status()
+
+    content_type = resp.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+    ext = _IMAGE_CONTENT_TYPE_EXT.get(content_type, ".jpg")
+
+    fd, path = tempfile.mkstemp(suffix=ext, prefix="cover_")
+    try:
+        os.write(fd, resp.content)
+    finally:
+        os.close(fd)
+
+    logger.debug("Downloaded %r to %r (%d bytes)", url, path, len(resp.content))
+    return path
+
+
 def verify_cover_url(url: str, timeout: int = 5) -> bool:
     """Perform a HEAD request to verify that *url* resolves to a live image.
 
-    :param url: The image URL to check.
-    :type url: str
-    :param timeout: HTTP timeout in seconds.  Defaults to ``5``.
-    :type timeout: int
+    :param str url: The image URL to check.
+    :param int timeout: HTTP timeout in seconds.  Defaults to ``5``.
     :returns: ``True`` if the URL returns HTTP 200, ``False`` otherwise.
     :rtype: bool
     """
@@ -383,10 +401,8 @@ _default_fetcher: CoverFetcher = CoverFetcher()
 def fetch_book_covers(query: str, count: int = 5) -> list[BookCover]:
     """Module-level convenience wrapper around :class:`CoverFetcher`.
 
-    :param query: Search query.
-    :type query: str
-    :param count: Number of covers to fetch.
-    :type count: int
+    :param str query: Search query.
+    :param int count: Number of covers to fetch.
     :returns: List of :class:`BookCover` objects.
     :rtype: list[BookCover]
     """
@@ -396,8 +412,7 @@ def fetch_book_covers(query: str, count: int = 5) -> list[BookCover]:
 def fetch_random_cover_pairs(pair_count: int = 5) -> list[tuple[BookCover, BookCover]]:
     """Module-level convenience wrapper for random cover pairs.
 
-    :param pair_count: Number of pairs to generate.
-    :type pair_count: int
+    :param int pair_count: Number of pairs to generate.
     :returns: List of ``(cover_a, cover_b)`` tuples.
     :rtype: list[tuple[BookCover, BookCover]]
     """

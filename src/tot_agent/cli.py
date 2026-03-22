@@ -35,7 +35,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from typing import Optional
 
 import click
 from rich.console import Console
@@ -52,13 +51,11 @@ logger: logging.Logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _configure_logging(level: str, log_file: Optional[str]) -> None:
+def _configure_logging(level: str, log_file: str | None) -> None:
     """Configure the root logger with the requested level and optional file handler.
 
-    :param level: Logging level name (``"DEBUG"``, ``"INFO"``, etc.).
-    :type level: str
-    :param log_file: Optional file path to also write logs to.
-    :type log_file: str or None
+    :param str level: Logging level name (``"DEBUG"``, ``"INFO"``, etc.).
+    :param str or None log_file: Optional file path to also write logs to.
     """
     numeric = getattr(logging, level.upper(), logging.INFO)
     handlers: list[logging.Handler] = [logging.StreamHandler(sys.stderr)]
@@ -77,24 +74,24 @@ def _configure_logging(level: str, log_file: Optional[str]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _run_agent(goal: str, headless: bool, model: Optional[str], max_steps: Optional[int],
-               site_url: Optional[str]) -> None:
+def _run_agent(
+    goal: str,
+    headless: bool,
+    model: str | None,
+    max_steps: int | None,
+    site_url: str | None,
+) -> None:
     """Instantiate and run the agent for *goal*.
 
-    :param goal: Plain-English objective.
-    :type goal: str
-    :param headless: Whether to hide the browser window.
-    :type headless: bool
-    :param model: Optional model override.
-    :type model: str or None
-    :param max_steps: Optional max-steps override.
-    :type max_steps: int or None
-    :param site_url: Optional site URL override.
-    :type site_url: str or None
+    :param str goal: Plain-English objective.
+    :param bool headless: Whether to hide the browser window.
+    :param str or None model: Optional model override.
+    :param int or None max_steps: Optional max-steps override.
+    :param str or None site_url: Optional site URL override.
     """
     import tot_agent.config as _cfg
-    from tot_agent.browser import BrowserManager
     from tot_agent.agent import BrowserAgent, ConsoleObserver, LoggingObserver
+    from tot_agent.browser import BrowserManager
 
     # Apply overrides before constructing the agent.
     effective_model = model or _cfg.AGENT_MODEL
@@ -146,10 +143,10 @@ def _run_agent(goal: str, headless: bool, model: Optional[str], max_steps: Optio
 def cli(
     ctx: click.Context,
     log_level: str,
-    log_file: Optional[str],
-    model: Optional[str],
-    max_steps: Optional[int],
-    site_url: Optional[str],
+    log_file: str | None,
+    model: str | None,
+    max_steps: int | None,
+    site_url: str | None,
 ) -> None:
     """tot-agent — Autonomous browser agent for scripted GUI testing.
 
@@ -188,11 +185,13 @@ def create(ctx: click.Context, count: int, genre: str, headless: bool) -> None:
 @click.pass_context
 def vote(ctx: click.Context, user: str, count: int, headless: bool) -> None:
     """Have a single simulated user cast votes on existing A/B tests."""
-    from tot_agent.config import get_user
     from tot_agent.agent import VoteGoal
+    from tot_agent.config import get_user
+
     u = get_user(user)
     if u is None:
         from tot_agent.config import SIM_USERS
+
         available = [x.username for x in SIM_USERS]
         raise click.BadParameter(
             f"Unknown user {user!r}. Available: {available}", param_hint="--user"
@@ -254,6 +253,7 @@ def users() -> None:
 def info(ctx: click.Context) -> None:
     """Show current runtime configuration (env vars and active overrides)."""
     import tot_agent.config as _cfg
+
     table = Table(title="Runtime Configuration", show_header=True, header_style="bold")
     table.add_column("Setting", style="cyan", no_wrap=True)
     table.add_column("Value")
@@ -262,8 +262,11 @@ def info(ctx: click.Context) -> None:
         ("model", ctx.obj.get("model") or _cfg.AGENT_MODEL),
         ("max_steps", str(ctx.obj.get("max_steps") or _cfg.MAX_AGENT_STEPS)),
         ("api_key_set", "yes" if _cfg.ANTHROPIC_API_KEY else "[red]NO[/red]"),
-        ("screenshot_size",
-         f"{_cfg.SCREENSHOT_WIDTH}x{_cfg.SCREENSHOT_HEIGHT}"),
+        ("screenshot_size", f"{_cfg.SCREENSHOT_WIDTH}x{_cfg.SCREENSHOT_HEIGHT}"),
+        ("navigation_timeout_ms", str(_cfg.NAVIGATION_TIMEOUT_MS)),
+        ("action_timeout_ms", str(_cfg.ACTION_TIMEOUT_MS)),
+        ("wait_for_element_timeout_ms", str(_cfg.WAIT_FOR_ELEMENT_TIMEOUT_MS)),
+        ("page_ready_timeout_ms", str(_cfg.PAGE_READY_TIMEOUT_MS)),
         ("sim_users", str(len(_cfg.SIM_USERS))),
     ]
     for name, val in rows:
@@ -289,6 +292,7 @@ def covers(query: str, count: int, verify: bool) -> None:
         tot-agent covers "fantasy epic" --count 3 --verify
     """
     from tot_agent.covers import CoverFetcher, verify_cover_url
+
     fetcher = CoverFetcher()
     results = fetcher.fetch(query, count=count)
     if not results:
