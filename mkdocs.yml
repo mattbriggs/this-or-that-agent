@@ -1,0 +1,96 @@
+site_name: tot-agent
+site_description: Autonomous browser agent for scripted GUI testing
+site_author: Matt Briggs
+site_url: https://mattbriggs.github.io/this-or-that-agent
+docs_dir: site
+site_dir: docs
+
+repo_name: mattbriggs/this-or-that-agent
+repo_url: https://github.com/mattbriggs/this-or-that-agent
+edit_uri: edit/main/site/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: sphinx
+            show_source: true
+            show_bases: true
+            show_root_heading: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Usage Guide: usage.md
+  - API Reference:
+      - Overview: api/index.md
+      - agent: api/agent.md
+      - browser: api/browser.md
+      - covers: api/covers.md
+      - tools: api/tools.md
+      - config: api/config.md
+      - cli: api/cli.md
+  - Design:
+      - Software Design: design/software-design.md
+      - Requirements (SRS): design/srs.md
+      - Project Roadmap: design/roadmap.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/mattbriggs/this-or-that-agent

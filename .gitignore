@@ -152,7 +152,19 @@ venv.bak/
 .ropeproject
 
 # mkdocs documentation
-/site
+# /site is the markdown source — tracked in git
+# /docs is the MkDocs HTML output for GitHub Pages — tracked in git
+# reports/coverage is the pytest-cov HTML report — not tracked
+reports/coverage/
+reports/coverage.json
+
+# virtual env
+
+#mac
+.mac/
+
+#Heretto
+.her/
 
 # mypy
 .mypy_cache/
