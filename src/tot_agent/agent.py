@@ -26,14 +26,15 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, ClassVar
 
-import anthropic
 from rich.console import Console
 from rich.panel import Panel
 
@@ -44,8 +45,10 @@ from tot_agent.config import (
     SIM_USERS,
     SimUser,
 )
-from tot_agent.browser import BrowserManager
 from tot_agent.tools import TOOL_DEFINITIONS, dispatch, format_tool_result
+
+if TYPE_CHECKING:
+    from tot_agent.browser import BrowserManager
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -79,10 +82,8 @@ class EventType(Enum):
 class AgentEvent:
     """Carries data from the agent loop to registered observers.
 
-    :param event_type: The kind of event that occurred.
-    :type event_type: EventType
-    :param data: Arbitrary key-value payload; keys vary per event type.
-    :type data: dict[str, Any]
+    :param EventType event_type: The kind of event that occurred.
+    :param dict[str, Any] data: Arbitrary key-value payload; keys vary per event type.
     """
 
     event_type: EventType
@@ -105,8 +106,7 @@ class AgentObserver(ABC):
     def on_event(self, event: AgentEvent) -> None:
         """Handle an agent event.
 
-        :param event: The event to handle.
-        :type event: AgentEvent
+        :param AgentEvent event: The event to handle.
         """
 
 
@@ -118,18 +118,16 @@ class AgentObserver(ABC):
 class ConsoleObserver(AgentObserver):
     """Renders agent events to the terminal using :class:`rich.console.Console`.
 
-    :param console: Rich console instance.  A new one is created if omitted.
-    :type console: rich.console.Console or None
+    :param rich.console.Console or None console: Rich console instance.  A new one is created if omitted.
     """
 
-    def __init__(self, console: Optional[Console] = None) -> None:
+    def __init__(self, console: Console | None = None) -> None:
         self._console = console or Console()
 
-    def on_event(self, event: AgentEvent) -> None:  # noqa: C901
+    def on_event(self, event: AgentEvent) -> None:
         """Render *event* to the terminal.
 
-        :param event: Agent event to render.
-        :type event: AgentEvent
+        :param AgentEvent event: Agent event to render.
         """
         match event.event_type:
             case EventType.GOAL_START:
@@ -181,18 +179,16 @@ class ConsoleObserver(AgentObserver):
 class LoggingObserver(AgentObserver):
     """Writes agent events to the Python :mod:`logging` hierarchy.
 
-    :param log: Logger to write to.  Defaults to this module's logger.
-    :type log: logging.Logger or None
+    :param logging.Logger or None log: Logger to write to.  Defaults to this module's logger.
     """
 
-    def __init__(self, log: Optional[logging.Logger] = None) -> None:
+    def __init__(self, log: logging.Logger | None = None) -> None:
         self._log = log or logger
 
     def on_event(self, event: AgentEvent) -> None:
         """Log *event* at an appropriate level.
 
-        :param event: Agent event to log.
-        :type event: AgentEvent
+        :param AgentEvent event: Agent event to log.
         """
         match event.event_type:
             case EventType.GOAL_START:
@@ -245,6 +241,8 @@ Key principles:
 6. Be resilient -- if a click or fill fails, screenshot the page and try an alternative.
 7. Login state is per-user-context. After switch_user you may need to login again if
    that user has not authenticated in this session.
+8. Tool results are JSON. Treat any tool result with "ok": false as a failed action that
+   needs recovery or a different approach.
 
 The site is a local web application. Routes may vary -- use screenshots
 to discover the actual UI rather than assuming fixed selectors.
@@ -254,8 +252,7 @@ to discover the actual UI rather than assuming fixed selectors.
 def _build_system_prompt(users: list[SimUser]) -> str:
     """Render the system prompt with the simulated user roster.
 
-    :param users: List of :class:`~tot_agent.config.SimUser` objects.
-    :type users: list[SimUser]
+    :param list[SimUser] users: List of :class:`~tot_agent.config.SimUser` objects.
     :returns: Fully rendered system prompt string.
     :rtype: str
     """
@@ -263,6 +260,18 @@ def _build_system_prompt(users: list[SimUser]) -> str:
         f"  - {u.username} / {u.password} (bias: {u.voting_bias})" for u in users
     )
     return _SYSTEM_PROMPT_TEMPLATE.format(users=user_lines)
+
+
+def _create_default_client(api_key: str) -> Any:
+    """Create the default Anthropic client only when needed."""
+    try:
+        import anthropic
+    except ImportError as exc:
+        raise RuntimeError(
+            "anthropic is not installed. Install project dependencies before "
+            "running the browser agent."
+        ) from exc
+    return anthropic.Anthropic(api_key=api_key)
 
 
 # ---------------------------------------------------------------------------
@@ -276,32 +285,28 @@ class BrowserAgent:
     The agent calls Claude with :data:`~tot_agent.tools.TOOL_DEFINITIONS` and
     iterates until the model reaches ``end_turn`` or the step cap is hit.
 
-    :param bm: An initialised :class:`~tot_agent.browser.BrowserManager`.
-    :type bm: BrowserManager
-    :param observers: Observers to notify at each lifecycle event.  Defaults
+    :param BrowserManager bm: An initialised :class:`~tot_agent.browser.BrowserManager`.
+    :param list[AgentObserver] or None observers: Observers to notify at each lifecycle event.  Defaults
         to ``[ConsoleObserver(), LoggingObserver()]``.
-    :type observers: list[AgentObserver] or None
-    :param model: Claude model identifier.  Defaults to
+    :param str model: Claude model identifier.  Defaults to
         :data:`~tot_agent.config.AGENT_MODEL`.
-    :type model: str
-    :param max_steps: Maximum tool-call iterations per goal.  Defaults to
+    :param int max_steps: Maximum tool-call iterations per goal.  Defaults to
         :data:`~tot_agent.config.MAX_AGENT_STEPS`.
-    :type max_steps: int
-    :param api_key: Anthropic API key.  Defaults to
+    :param str or None api_key: Anthropic API key.  Defaults to
         :data:`~tot_agent.config.ANTHROPIC_API_KEY`.
-    :type api_key: str or None
     :raises RuntimeError: At construction time if *api_key* is ``None``.
     """
 
     def __init__(
         self,
         bm: BrowserManager,
-        observers: Optional[list[AgentObserver]] = None,
+        observers: list[AgentObserver] | None = None,
         model: str = AGENT_MODEL,
         max_steps: int = MAX_AGENT_STEPS,
-        api_key: Optional[str] = ANTHROPIC_API_KEY,
+        api_key: str | None = ANTHROPIC_API_KEY,
+        client: Any | None = None,
     ) -> None:
-        if api_key is None:
+        if client is None and api_key is None:
             raise RuntimeError(
                 "ANTHROPIC_API_KEY is not set. "
                 "Export it as an environment variable or add it to .env."
@@ -313,7 +318,7 @@ class BrowserAgent:
             ConsoleObserver(),
             LoggingObserver(),
         ]
-        self._client = anthropic.Anthropic(api_key=api_key)
+        self._client = client or _create_default_client(api_key)
         self._system = _build_system_prompt(SIM_USERS)
 
     # ------------------------------------------------------------------
@@ -323,24 +328,21 @@ class BrowserAgent:
     def add_observer(self, observer: AgentObserver) -> None:
         """Register an additional observer.
 
-        :param observer: Observer to add.
-        :type observer: AgentObserver
+        :param AgentObserver observer: Observer to add.
         """
         self._observers.append(observer)
 
     def remove_observer(self, observer: AgentObserver) -> None:
         """Deregister an observer.
 
-        :param observer: Observer to remove.
-        :type observer: AgentObserver
+        :param AgentObserver observer: Observer to remove.
         """
         self._observers.remove(observer)
 
     def _emit(self, event: AgentEvent) -> None:
         """Notify all registered observers of *event*.
 
-        :param event: The event to broadcast.
-        :type event: AgentEvent
+        :param AgentEvent event: The event to broadcast.
         """
         for obs in self._observers:
             obs.on_event(event)
@@ -349,11 +351,25 @@ class BrowserAgent:
     # Core loop
     # ------------------------------------------------------------------
 
+    async def _create_message_response(self, messages: list[dict[str, Any]]) -> Any:
+        """Call the model client without blocking the event loop."""
+        create = self._client.messages.create
+        kwargs = {
+            "model": self.model,
+            "max_tokens": 4096,
+            "system": self._system,
+            "tools": TOOL_DEFINITIONS,
+            "messages": messages,
+        }
+
+        if inspect.iscoroutinefunction(create):
+            return await create(**kwargs)
+        return await asyncio.to_thread(create, **kwargs)
+
     async def run(self, goal: str) -> str:
         """Execute the agent loop until the goal is achieved or the step cap is hit.
 
-        :param goal: Plain-English objective for the agent.
-        :type goal: str
+        :param str goal: Plain-English objective for the agent.
         :returns: A human-readable summary of what was accomplished.
         :rtype: str
         """
@@ -365,13 +381,7 @@ class BrowserAgent:
         for step in range(1, self.max_steps + 1):
             self._emit(AgentEvent(EventType.STEP_START, {"step": step}))
 
-            response = self._client.messages.create(
-                model=self.model,
-                max_tokens=4096,
-                system=self._system,
-                tools=TOOL_DEFINITIONS,
-                messages=messages,
-            )
+            response = await self._create_message_response(messages)
 
             text_parts: list[str] = []
             tool_calls: list[Any] = []
@@ -449,11 +459,9 @@ class GoalTemplate:
 class CreateTestsGoal(GoalTemplate):
     """Goal: create A/B tests with real book covers.
 
-    :param count: Number of tests to create.  Defaults to ``5``.
-    :type count: int
-    :param genre: Book genre, or ``"mixed"`` for variety.  Defaults to
+    :param int count: Number of tests to create.  Defaults to ``5``.
+    :param str genre: Book genre, or ``"mixed"`` for variety.  Defaults to
         ``"mixed"``.
-    :type genre: str
     """
 
     def __init__(self, count: int = 5, genre: str = "mixed") -> None:
@@ -484,17 +492,13 @@ class CreateTestsGoal(GoalTemplate):
 class VoteGoal(GoalTemplate):
     """Goal: have a single user vote on existing tests.
 
-    :param username: Voter's username.
-    :type username: str
-    :param password: Voter's password.
-    :type password: str
-    :param vote_count: Number of tests to vote on.  Defaults to ``3``.
-    :type vote_count: int
-    :param bias: Voting bias hint.  Defaults to ``"random"``.
-    :type bias: str
+    :param str username: Voter's username.
+    :param str password: Voter's password.
+    :param int vote_count: Number of tests to vote on.  Defaults to ``3``.
+    :param str bias: Voting bias hint.  Defaults to ``"random"``.
     """
 
-    _BIAS_HINTS: dict[str, str] = {
+    _BIAS_HINTS: ClassVar[dict[str, str]] = {
         "prefers_dark": "Prefer covers with darker colour palettes.",
         "prefers_bright": "Prefer covers with brighter, more colourful designs.",
         "prefers_illustrated": "Prefer covers with illustrated or artistic designs.",
@@ -532,8 +536,7 @@ class VoteGoal(GoalTemplate):
 class SimulateAllUsersGoal(GoalTemplate):
     """Goal: simulate all configured users voting.
 
-    :param vote_count_each: Number of votes per user.  Defaults to ``2``.
-    :type vote_count_each: int
+    :param int vote_count_each: Number of votes per user.  Defaults to ``2``.
     """
 
     def __init__(self, vote_count_each: int = 2) -> None:
@@ -562,10 +565,8 @@ class SimulateAllUsersGoal(GoalTemplate):
 class FullSeedGoal(GoalTemplate):
     """Goal: create tests, run voting simulation, view results.
 
-    :param test_count: Number of A/B tests to create.  Defaults to ``5``.
-    :type test_count: int
-    :param vote_rounds: Voting rounds per user.  Defaults to ``1``.
-    :type vote_rounds: int
+    :param int test_count: Number of A/B tests to create.  Defaults to ``5``.
+    :param int vote_rounds: Voting rounds per user.  Defaults to ``1``.
     """
 
     def __init__(self, test_count: int = 5, vote_rounds: int = 1) -> None:
@@ -598,10 +599,8 @@ def goal_create_tests(count: int = 5, genre: str = "mixed") -> str:
     .. deprecated::
         Use :class:`CreateTestsGoal` directly.
 
-    :param count: Number of tests to create.
-    :type count: int
-    :param genre: Book genre.
-    :type genre: str
+    :param int count: Number of tests to create.
+    :param str genre: Book genre.
     :returns: Goal string.
     :rtype: str
     """
@@ -619,14 +618,10 @@ def goal_vote_on_tests(
     .. deprecated::
         Use :class:`VoteGoal` directly.
 
-    :param username: Voter's username.
-    :type username: str
-    :param password: Voter's password.
-    :type password: str
-    :param vote_count: Number of tests to vote on.
-    :type vote_count: int
-    :param bias: Voting bias.
-    :type bias: str
+    :param str username: Voter's username.
+    :param str password: Voter's password.
+    :param int vote_count: Number of tests to vote on.
+    :param str bias: Voting bias.
     :returns: Goal string.
     :rtype: str
     """
@@ -641,8 +636,7 @@ def goal_simulate_all_users(vote_count_each: int = 2) -> str:
     .. deprecated::
         Use :class:`SimulateAllUsersGoal` directly.
 
-    :param vote_count_each: Votes per user.
-    :type vote_count_each: int
+    :param int vote_count_each: Votes per user.
     :returns: Goal string.
     :rtype: str
     """
@@ -655,10 +649,8 @@ def goal_full_seed(test_count: int = 5, vote_rounds: int = 1) -> str:
     .. deprecated::
         Use :class:`FullSeedGoal` directly.
 
-    :param test_count: Number of A/B tests to create.
-    :type test_count: int
-    :param vote_rounds: Voting rounds per user.
-    :type vote_rounds: int
+    :param int test_count: Number of A/B tests to create.
+    :param int vote_rounds: Voting rounds per user.
     :returns: Goal string.
     :rtype: str
     """

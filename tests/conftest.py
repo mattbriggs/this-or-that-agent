@@ -7,8 +7,16 @@ Fixtures defined here are automatically available to all tests under the
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 
 # ---------------------------------------------------------------------------
@@ -28,10 +36,15 @@ def mock_page():
     page.screenshot = AsyncMock(return_value=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
     page.inner_text = AsyncMock(return_value="Page text content")
     page.wait_for_selector = AsyncMock(return_value=None)
+    page.wait_for_load_state = AsyncMock(return_value=None)
     page.keyboard = AsyncMock()
     page.keyboard.press = AsyncMock(return_value=None)
     page.evaluate = AsyncMock(return_value="js_result")
-    page.get_by_text = MagicMock(return_value=AsyncMock())
+
+    text_locator = AsyncMock()
+    text_locator.first = AsyncMock()
+    text_locator.first.click = AsyncMock(return_value=None)
+    page.get_by_text = MagicMock(return_value=text_locator)
     return page
 
 
@@ -73,9 +86,10 @@ async def browser_manager(mock_browser):
 
 @pytest.fixture
 def mock_anthropic_client():
-    """A mock :class:`anthropic.Anthropic` client."""
+    """A mock Anthropic-like client with a ``messages.create`` method."""
     client = MagicMock()
     client.messages = MagicMock()
+    client.messages.create = MagicMock()
     return client
 
 
@@ -103,7 +117,6 @@ def open_library_response():
             },
             {
                 "title": "No Cover Book",
-                # Intentionally missing cover_i
                 "author_name": ["Nobody"],
             },
         ]
@@ -129,7 +142,6 @@ def google_books_response():
                 "volumeInfo": {
                     "title": "No Image Book",
                     "authors": ["Author X"],
-                    # No imageLinks
                 }
             },
         ]

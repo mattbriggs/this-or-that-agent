@@ -29,7 +29,7 @@ python -m venv .venv && source .venv/bin/activate
 # 2. Install package (add [dev] for tests + docs tools)
 pip install -e ".[dev]"
 
-# 3. Install Playwright browsers (one-time)
+# 3. Install Playwright browsers only if you need live browser runs
 playwright install chromium
 
 # 4. Configure
@@ -78,16 +78,21 @@ All commands accept global options — see `tot-agent --help` or the [Usage Guid
 ## Running tests
 
 ```bash
-# Unit tests only (fast, no browser needed)
-SKIP_INTEGRATION=1 pytest
+# Fast offline unit tests
+make test-unit
 
-# All tests including Playwright integration
-pytest
-
-# With HTML coverage report
-pytest --cov=src/tot_agent --cov-report=html:reports/coverage
+# Coverage report for the offline suite
+make coverage
 open reports/coverage/index.html
+
+# Opt-in Playwright integration tests
+RUN_INTEGRATION_TESTS=1 pytest --no-cov tests/integration
+
+# Opt-in live network tests as well
+RUN_INTEGRATION_TESTS=1 RUN_NETWORK_TESTS=1 pytest --no-cov tests/integration
 ```
+
+Developer workflow details live in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ---
 
@@ -112,11 +117,14 @@ this-or-that-agent/
 │       ├── cli.py          # Click CLI entry point
 │       ├── config.py       # SimUser, ROUTES, env vars
 │       ├── covers.py       # Strategy pattern cover fetching
+│       ├── results.py      # Structured browser/tool action results
 │       └── tools.py        # Claude tool schemas + dispatcher
 ├── tests/
 │   ├── conftest.py         # shared fixtures
 │   ├── unit/               # fast offline unit tests
 │   └── integration/        # Playwright + live network tests
+├── CONTRIBUTING.md         # developer setup and common commands
+├── Makefile                # lint/test/coverage/docs task shortcuts
 ├── site/                   # MkDocs markdown source
 │   ├── design/             # SRS, software design, roadmap
 │   └── api/                # auto-generated API reference pages
@@ -134,6 +142,7 @@ this-or-that-agent/
 - **Strategy pattern** — book-cover sources are interchangeable (`OpenLibrarySource`, `GoogleBooksSource`); add new sources without touching orchestration code.
 - **Observer pattern** — attach `ConsoleObserver`, `LoggingObserver`, or your own reporter to the agent loop without modifying `BrowserAgent`.
 - **Template Method pattern** — pre-built goal classes (`CreateTestsGoal`, `VoteGoal`, `FullSeedGoal`) share a common structure and are easy to extend.
+- **Structured tool results** — browser and dispatch layers return machine-readable success/error payloads, which makes retries and diagnostics more reliable.
 - **Vision-first** — the agent reads screenshots rather than hardcoded selectors, so it adapts to UI changes automatically.
 
 See the [Software Design](https://mattbriggs.github.io/this-or-that-agent/design/software-design/) doc for full architecture diagrams.

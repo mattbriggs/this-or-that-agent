@@ -17,17 +17,23 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Any
 
-from playwright.async_api import (
-    Browser,
-    BrowserContext,
-    Page,
-    Playwright,
-    async_playwright,
+from tot_agent.config import (
+    ACTION_TIMEOUT_MS,
+    NAVIGATION_TIMEOUT_MS,
+    PAGE_READY_TIMEOUT_MS,
+    SCREENSHOT_HEIGHT,
+    SCREENSHOT_WIDTH,
+    SITE_URL,
+    WAIT_FOR_ELEMENT_TIMEOUT_MS,
 )
+from tot_agent.results import failure_result, success_result
 
-from tot_agent.config import ROUTES, SCREENSHOT_HEIGHT, SCREENSHOT_WIDTH, SITE_URL
+if TYPE_CHECKING:
+    from playwright.async_api import Browser, BrowserContext, Page, Playwright
+else:  # pragma: no cover - runtime fallback when Playwright is absent
+    Browser = BrowserContext = Page = Playwright = Any
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -48,12 +54,10 @@ class BrowserManager:
             await bm.switch_user("alice")
             await bm.navigate("/login")
 
-    :param headless: When ``True``, the browser runs without a visible window.
+    :param bool headless: When ``True``, the browser runs without a visible window.
         Defaults to ``False``.
-    :type headless: bool
-    :param site_url: Base URL prepended to relative navigation paths.
+    :param str site_url: Base URL prepended to relative navigation paths.
         Defaults to :data:`~tot_agent.config.SITE_URL`.
-    :type site_url: str
     """
 
     def __init__(
@@ -63,22 +67,30 @@ class BrowserManager:
     ) -> None:
         self.headless = headless
         self.site_url = site_url
-        self._pw: Optional[Playwright] = None
-        self._browser: Optional[Browser] = None
+        self._pw: Playwright | None = None
+        self._browser: Browser | None = None
         # user_key -> (BrowserContext, Page)
         self._contexts: dict[str, tuple[BrowserContext, Page]] = {}
-        self._active_user: Optional[str] = None
+        self._active_user: str | None = None
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
-    async def __aenter__(self) -> "BrowserManager":
+    async def __aenter__(self) -> BrowserManager:
         """Start Playwright and launch the Chromium browser.
 
         :returns: This :class:`BrowserManager` instance.
         :rtype: BrowserManager
         """
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError as exc:  # pragma: no cover - exercised in unit tests via import boundary
+            raise RuntimeError(
+                "playwright is not installed. Install project dependencies and run "
+                "`playwright install chromium` before starting the browser."
+            ) from exc
+
         self._pw = await async_playwright().start()
         self._browser = await self._pw.chromium.launch(
             headless=self.headless,
@@ -105,8 +117,7 @@ class BrowserManager:
     async def _ensure_context(self, user_key: str) -> tuple[BrowserContext, Page]:
         """Return an existing context for *user_key*, or create one.
 
-        :param user_key: Unique identifier for the user context.
-        :type user_key: str
+        :param str user_key: Unique identifier for the user context.
         :returns: A ``(BrowserContext, Page)`` tuple for the user.
         :rtype: tuple[BrowserContext, Page]
         :raises RuntimeError: If the browser has not been started yet.
@@ -125,18 +136,21 @@ class BrowserManager:
             logger.debug("Created browser context for user %r", user_key)
         return self._contexts[user_key]
 
-    async def switch_user(self, user_key: str) -> str:
+    async def switch_user(self, user_key: str) -> dict[str, Any]:
         """Make *user_key* the active browser context, creating it if needed.
 
-        :param user_key: Username to switch to.
-        :type user_key: str
+        :param str user_key: Username to switch to.
         :returns: A status string confirming the switch.
         :rtype: str
         """
         await self._ensure_context(user_key)
         self._active_user = user_key
         logger.info("Active user context -> %r", user_key)
-        return f"Switched to user context: {user_key}"
+        return success_result(
+            f"Switched to user context: {user_key}",
+            action="switch_user",
+            username=user_key,
+        )
 
     @property
     def active_page(self) -> Page:
@@ -149,7 +163,7 @@ class BrowserManager:
         return self._contexts[self._active_user][1]
 
     @property
-    def active_user(self) -> Optional[str]:
+    def active_user(self) -> str | None:
         """Username of the currently active browser context, or ``None``."""
         return self._active_user
 
@@ -157,22 +171,40 @@ class BrowserManager:
     # Browser actions (called by agent tools)
     # ------------------------------------------------------------------
 
-    async def navigate(self, url: str) -> str:
+    async def navigate(self, url: str) -> dict[str, Any]:
         """Navigate the active page to *url*.
 
         If *url* starts with ``/`` it is treated as a relative path and
         prepended with :attr:`site_url`.
 
-        :param url: Absolute URL or site-relative path (e.g. ``"/login"``).
-        :type url: str
+        :param str url: Absolute URL or site-relative path (e.g. ``"/login"``).
         :returns: Confirmation string with the resolved URL.
         :rtype: str
         """
-        if url.startswith("/"):
-            url = self.site_url + url
-        await self.active_page.goto(url, wait_until="networkidle", timeout=15_000)
-        logger.debug("Navigated to %s", url)
-        return f"Navigated to {url}"
+        resolved_url = self.site_url + url if url.startswith("/") else url
+        try:
+            await self.active_page.goto(
+                resolved_url,
+                wait_until="domcontentloaded",
+                timeout=NAVIGATION_TIMEOUT_MS,
+            )
+        except Exception as exc:
+            logger.warning("Navigation failed for %s: %s", resolved_url, exc)
+            return failure_result(
+                f"Navigation failed for {resolved_url}",
+                error=str(exc),
+                action="navigate",
+                url=resolved_url,
+                timeout_ms=NAVIGATION_TIMEOUT_MS,
+            )
+
+        logger.debug("Navigated to %s", resolved_url)
+        return success_result(
+            f"Navigated to {resolved_url}",
+            action="navigate",
+            url=resolved_url,
+            timeout_ms=NAVIGATION_TIMEOUT_MS,
+        )
 
     async def screenshot(self) -> str:
         """Capture a screenshot of the active page.
@@ -184,72 +216,106 @@ class BrowserManager:
         logger.debug("Screenshot captured (%d bytes)", len(png_bytes))
         return base64.b64encode(png_bytes).decode()
 
-    async def click(self, selector: str) -> str:
+    async def click(self, selector: str) -> dict[str, Any]:
         """Click the first element matching *selector*.
 
         Tries CSS selector first; falls back to visible-text matching.
 
-        :param selector: CSS selector or visible text to click.
-        :type selector: str
+        :param str selector: CSS selector or visible text to click.
         :returns: Confirmation string, or an error message prefixed with
             ``"ERROR"``.
         :rtype: str
         """
         page = self.active_page
+        css_error: str | None = None
         try:
-            await page.click(selector, timeout=5_000)
+            await page.click(selector, timeout=ACTION_TIMEOUT_MS)
             logger.debug("Clicked selector %r", selector)
-            return f"Clicked: {selector}"
-        except Exception:
+            return success_result(
+                f"Clicked: {selector}",
+                action="click",
+                selector=selector,
+                strategy="css",
+            )
+        except Exception as exc:
+            css_error = str(exc)
             try:
-                await page.get_by_text(selector, exact=False).first.click(
-                    timeout=5_000
-                )
+                await page.get_by_text(selector, exact=False).first.click(timeout=ACTION_TIMEOUT_MS)
                 logger.debug("Clicked element by text %r", selector)
-                return f"Clicked element with text: {selector}"
+                return success_result(
+                    f"Clicked element with text: {selector}",
+                    action="click",
+                    selector=selector,
+                    strategy="text",
+                )
             except Exception as exc:
                 logger.warning("Click failed for %r: %s", selector, exc)
-                return f"ERROR clicking {selector!r}: {exc}"
+                return failure_result(
+                    f"Unable to click {selector!r}",
+                    error=str(exc),
+                    action="click",
+                    selector=selector,
+                    attempted_strategies=["css", "text"],
+                    css_error=css_error,
+                )
 
-    async def fill(self, selector: str, value: str) -> str:
+    async def fill(self, selector: str, value: str) -> dict[str, Any]:
         """Clear and fill an input field identified by *selector*.
 
-        :param selector: CSS selector of the input element.
-        :type selector: str
-        :param value: Text to type into the field.
-        :type value: str
+        :param str selector: CSS selector of the input element.
+        :param str value: Text to type into the field.
         :returns: Confirmation string, or an error message prefixed with
             ``"ERROR"``.
         :rtype: str
         """
         try:
-            await self.active_page.fill(selector, value, timeout=5_000)
+            await self.active_page.fill(selector, value, timeout=ACTION_TIMEOUT_MS)
             logger.debug("Filled %r", selector)
-            return f"Filled {selector!r} with value"
+            return success_result(
+                f"Filled {selector!r} with value",
+                action="fill",
+                selector=selector,
+                value=value,
+            )
         except Exception as exc:
             logger.warning("Fill failed for %r: %s", selector, exc)
-            return f"ERROR filling {selector!r}: {exc}"
+            return failure_result(
+                f"Unable to fill {selector!r}",
+                error=str(exc),
+                action="fill",
+                selector=selector,
+                value=value,
+            )
 
-    async def select_option(self, selector: str, value: str) -> str:
+    async def select_option(self, selector: str, value: str) -> dict[str, Any]:
         """Select a ``<select>`` option by value or label.
 
-        :param selector: CSS selector of the ``<select>`` element.
-        :type selector: str
-        :param value: Option value or visible label to select.
-        :type value: str
+        :param str selector: CSS selector of the ``<select>`` element.
+        :param str value: Option value or visible label to select.
         :returns: Confirmation string, or an error message prefixed with
             ``"ERROR"``.
         :rtype: str
         """
         try:
-            await self.active_page.select_option(selector, value=value, timeout=5_000)
+            await self.active_page.select_option(selector, value=value, timeout=ACTION_TIMEOUT_MS)
             logger.debug("Selected option %r in %r", value, selector)
-            return f"Selected option {value!r} in {selector}"
+            return success_result(
+                f"Selected option {value!r} in {selector}",
+                action="select_option",
+                selector=selector,
+                value=value,
+            )
         except Exception as exc:
             logger.warning("select_option failed: %s", exc)
-            return f"ERROR selecting option: {exc}"
+            return failure_result(
+                f"Unable to select option {value!r} in {selector}",
+                error=str(exc),
+                action="select_option",
+                selector=selector,
+                value=value,
+            )
 
-    async def get_page_text(self) -> str:
+    async def get_page_text(self) -> dict[str, Any]:
         """Return visible body text of the active page, capped at 4 000 chars.
 
         :returns: Truncated visible text content.
@@ -257,64 +323,108 @@ class BrowserManager:
         """
         text = await self.active_page.inner_text("body")
         logger.debug("get_page_text: %d chars", len(text))
-        return text[:4000]
+        truncated = text[:4000]
+        return success_result(
+            "Retrieved visible page text",
+            action="get_page_text",
+            text=truncated,
+            truncated=len(text) > len(truncated),
+            character_count=len(truncated),
+        )
 
-    async def get_page_url(self) -> str:
+    async def get_page_url(self) -> dict[str, Any]:
         """Return the current URL of the active page.
 
         :returns: Current page URL.
         :rtype: str
         """
-        return self.active_page.url
+        return success_result(
+            "Retrieved current page URL",
+            action="get_page_url",
+            url=self.active_page.url,
+        )
 
-    async def wait_for_selector(self, selector: str, timeout: int = 8_000) -> str:
+    async def wait_for_selector(
+        self,
+        selector: str,
+        timeout: int = WAIT_FOR_ELEMENT_TIMEOUT_MS,
+    ) -> dict[str, Any]:
         """Wait until a CSS selector appears on the page.
 
         Useful for waiting after form submissions or client-side route changes.
 
-        :param selector: CSS selector to wait for.
-        :type selector: str
-        :param timeout: Maximum wait time in milliseconds.  Defaults to
+        :param str selector: CSS selector to wait for.
+        :param int timeout: Maximum wait time in milliseconds.  Defaults to
             ``8000``.
-        :type timeout: int
         :returns: Confirmation string, or a timeout error message.
         :rtype: str
         """
         try:
             await self.active_page.wait_for_selector(selector, timeout=timeout)
             logger.debug("Selector appeared: %r", selector)
-            return f"Selector appeared: {selector}"
+            return success_result(
+                f"Selector appeared: {selector}",
+                action="wait_for_selector",
+                selector=selector,
+                timeout_ms=timeout,
+            )
         except Exception as exc:
             logger.warning("Timeout waiting for %r: %s", selector, exc)
-            return f"Timeout waiting for {selector!r}: {exc}"
+            return failure_result(
+                f"Timed out waiting for {selector!r}",
+                error=str(exc),
+                action="wait_for_selector",
+                selector=selector,
+                timeout_ms=timeout,
+                recoverable=True,
+            )
 
-    async def press_key(self, key: str) -> str:
+    async def press_key(self, key: str) -> dict[str, Any]:
         """Press a keyboard key on the active page.
 
-        :param key: Playwright key name (e.g. ``"Enter"``, ``"Tab"``,
+        :param str key: Playwright key name (e.g. ``"Enter"``, ``"Tab"``,
             ``"Escape"``).
-        :type key: str
         :returns: Confirmation string.
         :rtype: str
         """
-        await self.active_page.keyboard.press(key)
+        try:
+            await self.active_page.keyboard.press(key)
+        except Exception as exc:
+            logger.warning("Key press failed for %r: %s", key, exc)
+            return failure_result(
+                f"Unable to press key {key}",
+                error=str(exc),
+                action="press_key",
+                key=key,
+            )
         logger.debug("Pressed key %r", key)
-        return f"Pressed key: {key}"
+        return success_result(
+            f"Pressed key: {key}",
+            action="press_key",
+            key=key,
+        )
 
-    async def scroll_down(self) -> str:
+    async def scroll_down(self) -> dict[str, Any]:
         """Scroll the active page to the bottom.
 
         :returns: Confirmation string.
         :rtype: str
         """
-        await self.active_page.keyboard.press("End")
-        return "Scrolled to bottom"
+        try:
+            await self.active_page.keyboard.press("End")
+        except Exception as exc:
+            logger.warning("Scroll down failed: %s", exc)
+            return failure_result(
+                "Unable to scroll to the bottom of the page",
+                error=str(exc),
+                action="scroll_down",
+            )
+        return success_result("Scrolled to bottom", action="scroll_down")
 
-    async def evaluate(self, js: str) -> str:
+    async def evaluate(self, js: str) -> dict[str, Any]:
         """Execute arbitrary JavaScript in the active page context.
 
-        :param js: JavaScript expression or statement to evaluate.
-        :type js: str
+        :param str js: JavaScript expression or statement to evaluate.
         :returns: String representation of the result (capped at 1 000 chars),
             or a JS error message.
         :rtype: str
@@ -323,7 +433,46 @@ class BrowserManager:
             result = await self.active_page.evaluate(js)
             output = str(result)[:1000]
             logger.debug("JS evaluate result: %s", output[:80])
-            return output
+            return success_result(
+                "Executed JavaScript in the active page",
+                action="evaluate",
+                result=output,
+            )
         except Exception as exc:
             logger.warning("JS evaluate error: %s", exc)
-            return f"JS error: {exc}"
+            return failure_result(
+                "JavaScript evaluation failed",
+                error=str(exc),
+                action="evaluate",
+            )
+
+    async def wait_for_page_ready(
+        self,
+        timeout: int = PAGE_READY_TIMEOUT_MS,
+    ) -> dict[str, Any]:
+        """Best-effort wait for a DOM-ready state after an action.
+
+        This is intentionally recoverable: many SPA interactions do not trigger
+        a new document load, so timing out here is useful signal but not always
+        a hard failure.
+        """
+        try:
+            await self.active_page.wait_for_load_state(
+                "domcontentloaded",
+                timeout=timeout,
+            )
+        except Exception as exc:
+            logger.debug("Page ready wait did not observe a new load: %s", exc)
+            return failure_result(
+                "No new DOM-ready state was observed after the action",
+                error=str(exc),
+                action="wait_for_page_ready",
+                timeout_ms=timeout,
+                recoverable=True,
+            )
+
+        return success_result(
+            "Observed DOM-ready state after the action",
+            action="wait_for_page_ready",
+            timeout_ms=timeout,
+        )

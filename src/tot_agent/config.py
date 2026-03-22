@@ -16,14 +16,21 @@ Environment variables
     Claude model identifier.  Defaults to ``claude-opus-4-5``.
 ``MAX_AGENT_STEPS``
     Hard ceiling on tool-call iterations per agent run.  Defaults to ``40``.
+``NAVIGATION_TIMEOUT_MS``
+    Timeout for page navigation and route transitions.
+``ACTION_TIMEOUT_MS``
+    Timeout for click/fill/select interactions.
+``WAIT_FOR_ELEMENT_TIMEOUT_MS``
+    Timeout for explicit selector waits.
+``PAGE_READY_TIMEOUT_MS``
+    Best-effort timeout for waiting on a new DOM-ready state after an action.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
@@ -53,7 +60,7 @@ application's URL structure."""
 # Anthropic / agent tuning
 # ---------------------------------------------------------------------------
 
-ANTHROPIC_API_KEY: Optional[str] = os.getenv("ANTHROPIC_API_KEY")
+ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
 """Anthropic API key.  Loaded from the ``ANTHROPIC_API_KEY`` environment
 variable.  Raises :class:`RuntimeError` at agent construction time if unset."""
 
@@ -69,6 +76,18 @@ SCREENSHOT_WIDTH: int = 1280
 SCREENSHOT_HEIGHT: int = 900
 """Browser viewport height in pixels."""
 
+NAVIGATION_TIMEOUT_MS: int = int(os.getenv("NAVIGATION_TIMEOUT_MS", "15000"))
+"""Navigation timeout in milliseconds."""
+
+ACTION_TIMEOUT_MS: int = int(os.getenv("ACTION_TIMEOUT_MS", "5000"))
+"""Default timeout for click/fill/select interactions in milliseconds."""
+
+WAIT_FOR_ELEMENT_TIMEOUT_MS: int = int(os.getenv("WAIT_FOR_ELEMENT_TIMEOUT_MS", "8000"))
+"""Default timeout for explicit selector waits in milliseconds."""
+
+PAGE_READY_TIMEOUT_MS: int = int(os.getenv("PAGE_READY_TIMEOUT_MS", "4000"))
+"""Best-effort wait time for DOM readiness after a form submission or click."""
+
 
 # ---------------------------------------------------------------------------
 # Simulated users
@@ -79,17 +98,13 @@ SCREENSHOT_HEIGHT: int = 900
 class SimUser:
     """A simulated user account used during automated testing.
 
-    :param username: Login username.
-    :type username: str
-    :param password: Login password.
-    :type password: str
-    :param display_name: Human-readable name shown in logs.  Defaults to
+    :param str username: Login username.
+    :param str password: Login password.
+    :param str display_name: Human-readable name shown in logs.  Defaults to
         *username* when blank.
-    :type display_name: str
-    :param voting_bias: Personality hint fed to the agent when casting votes.
+    :param str voting_bias: Personality hint fed to the agent when casting votes.
         One of ``"random"``, ``"prefers_dark"``, ``"prefers_bright"``, or
         ``"prefers_illustrated"``.
-    :type voting_bias: str
     """
 
     username: str
@@ -121,11 +136,10 @@ SIM_USERS: list[SimUser] = [
 that exist (or that you will create) on your dev site."""
 
 
-def get_user(username: str) -> Optional[SimUser]:
+def get_user(username: str) -> SimUser | None:
     """Look up a :class:`SimUser` by username.
 
-    :param username: The username to search for.
-    :type username: str
+    :param str username: The username to search for.
     :returns: The matching :class:`SimUser`, or ``None`` if not found.
     :rtype: SimUser or None
     """

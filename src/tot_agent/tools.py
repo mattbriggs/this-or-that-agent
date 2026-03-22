@@ -21,10 +21,12 @@ Adding a new tool
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from typing import TYPE_CHECKING, Any
+
+from tot_agent.config import PAGE_READY_TIMEOUT_MS
+from tot_agent.results import failure_result, is_failure_result
 
 if TYPE_CHECKING:
     from tot_agent.browser import BrowserManager
@@ -211,16 +213,13 @@ TOOL_DEFINITIONS: list[dict] = [
 async def dispatch(
     tool_name: str,
     tool_input: dict[str, Any],
-    bm: "BrowserManager",
+    bm: BrowserManager,
 ) -> Any:
     """Route a tool call from the agent to the correct implementation.
 
-    :param tool_name: Name of the tool as declared in :data:`TOOL_DEFINITIONS`.
-    :type tool_name: str
-    :param tool_input: Input parameters from the Claude tool-use block.
-    :type tool_input: dict[str, Any]
-    :param bm: Active :class:`~tot_agent.browser.BrowserManager` instance.
-    :type bm: BrowserManager
+    :param str tool_name: Name of the tool as declared in :data:`TOOL_DEFINITIONS`.
+    :param dict[str, Any] tool_input: Input parameters from the Claude tool-use block.
+    :param BrowserManager bm: Active :class:`~tot_agent.browser.BrowserManager` instance.
     :returns: A plain Python value (``str``, ``list``, or ``dict``).  The
         caller is responsible for serialising it into an API message.
     :rtype: Any
@@ -230,75 +229,163 @@ async def dispatch(
 
     logger.debug("Dispatching tool %r with input %s", tool_name, tool_input)
 
-    match tool_name:
+    try:
+        match tool_name:
 
-        # -- Vision / navigation ---------------------------------------------
-        case "screenshot":
-            return {"type": "screenshot", "data": await bm.screenshot()}
-
-        case "navigate":
-            return await bm.navigate(tool_input["url"])
-
-        case "click":
-            return await bm.click(tool_input["selector"])
-
-        case "fill":
-            return await bm.fill(tool_input["selector"], tool_input["value"])
-
-        case "press_key":
-            return await bm.press_key(tool_input["key"])
-
-        case "get_page_text":
-            return await bm.get_page_text()
-
-        case "get_page_url":
-            return await bm.get_page_url()
-
-        case "scroll_down":
-            return await bm.scroll_down()
-
-        case "wait_for_element":
-            return await bm.wait_for_selector(tool_input["selector"])
-
-        # -- User context ----------------------------------------------------
-        case "switch_user":
-            return await bm.switch_user(tool_input["username"])
-
-        case "login":
-            username = tool_input["username"]
-            password = tool_input["password"]
-            await bm.navigate(ROUTES["login"])
-            # Generic: fill the first text/email input, then the password input.
-            await bm.fill(
-                "input[type='text'], input[type='email'], "
-                "input[name='username'], input[name='email']",
-                username,
-            )
-            await bm.fill("input[type='password']", password)
-            await bm.press_key("Enter")
-            await asyncio.sleep(1.5)
-            logger.info("Login submitted for user %r", username)
-            return f"Login submitted for {username}. Take a screenshot to verify success."
-
-        # -- Book covers -----------------------------------------------------
-        case "fetch_book_covers":
-            covers = _fetch_covers(
-                query=tool_input["query"],
-                count=tool_input.get("count", 4),
-            )
-            return [
-                {
-                    "title": c.title,
-                    "author": c.author,
-                    "cover_url": c.cover_url,
-                    "source": c.source,
+            # -- Vision / navigation -----------------------------------------
+            case "screenshot":
+                return {
+                    "type": "screenshot",
+                    "ok": True,
+                    "message": "Captured screenshot of the active page",
+                    "data": await bm.screenshot(),
                 }
-                for c in covers
-            ]
 
-        case _:
-            logger.error("Unknown tool requested: %r", tool_name)
-            return f"ERROR: Unknown tool '{tool_name}'"
+            case "navigate":
+                return await bm.navigate(tool_input["url"])
+
+            case "click":
+                return await bm.click(tool_input["selector"])
+
+            case "fill":
+                return await bm.fill(tool_input["selector"], tool_input["value"])
+
+            case "press_key":
+                return await bm.press_key(tool_input["key"])
+
+            case "get_page_text":
+                return await bm.get_page_text()
+
+            case "get_page_url":
+                return await bm.get_page_url()
+
+            case "scroll_down":
+                return await bm.scroll_down()
+
+            case "wait_for_element":
+                return await bm.wait_for_selector(tool_input["selector"])
+
+            # -- User context ------------------------------------------------
+            case "switch_user":
+                return await bm.switch_user(tool_input["username"])
+
+            case "login":
+                username = tool_input["username"]
+                password = tool_input["password"]
+                steps: list[dict[str, Any]] = []
+
+                step_result = await bm.navigate(ROUTES["login"])
+                steps.append({"step": "navigate", "result": step_result})
+                if is_failure_result(step_result):
+                    return failure_result(
+                        "Login flow failed while navigating to the login page",
+                        error=step_result.get("error"),
+                        username=username,
+                        failed_step="navigate",
+                        steps=steps,
+                    )
+
+                step_result = await bm.fill(
+                    "input[type='text'], input[type='email'], "
+                    "input[name='username'], input[name='email']",
+                    username,
+                )
+                steps.append({"step": "fill_username", "result": step_result})
+                if is_failure_result(step_result):
+                    return failure_result(
+                        "Login flow failed while filling the username field",
+                        error=step_result.get("error"),
+                        username=username,
+                        failed_step="fill_username",
+                        steps=steps,
+                    )
+
+                step_result = await bm.fill("input[type='password']", password)
+                steps.append({"step": "fill_password", "result": step_result})
+                if is_failure_result(step_result):
+                    return failure_result(
+                        "Login flow failed while filling the password field",
+                        error=step_result.get("error"),
+                        username=username,
+                        failed_step="fill_password",
+                        steps=steps,
+                    )
+
+                step_result = await bm.press_key("Enter")
+                steps.append({"step": "submit", "result": step_result})
+                if is_failure_result(step_result):
+                    return failure_result(
+                        "Login flow failed while submitting credentials",
+                        error=step_result.get("error"),
+                        username=username,
+                        failed_step="submit",
+                        steps=steps,
+                    )
+
+                settle_result = await bm.wait_for_page_ready(timeout=PAGE_READY_TIMEOUT_MS)
+                steps.append({"step": "wait_for_page_ready", "result": settle_result})
+
+                logger.info("Login submitted for user %r", username)
+                return {
+                    "ok": True,
+                    "message": (
+                        f"Login submitted for {username}. Verification is still required "
+                        "with a screenshot or page text."
+                    ),
+                    "data": {
+                        "username": username,
+                        "verification_required": True,
+                        "steps": steps,
+                    },
+                }
+
+            # -- Book covers -------------------------------------------------
+            case "fetch_book_covers":
+                covers = _fetch_covers(
+                    query=tool_input["query"],
+                    count=tool_input.get("count", 4),
+                )
+                return {
+                    "ok": True,
+                    "message": f"Fetched {len(covers)} book cover candidates",
+                    "data": {
+                        "query": tool_input["query"],
+                        "count": len(covers),
+                        "covers": [
+                            {
+                                "title": c.title,
+                                "author": c.author,
+                                "cover_url": c.cover_url,
+                                "source": c.source,
+                            }
+                            for c in covers
+                        ],
+                    },
+                }
+
+            case _:
+                logger.error("Unknown tool requested: %r", tool_name)
+                return failure_result(
+                    f"Unknown tool '{tool_name}'",
+                    tool=tool_name,
+                    tool_input=tool_input,
+                )
+    except KeyError as exc:
+        logger.warning("Tool input missing required field for %r: %s", tool_name, exc)
+        return failure_result(
+            f"Tool '{tool_name}' is missing required input",
+            error=str(exc),
+            tool=tool_name,
+            tool_input=tool_input,
+        )
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.exception("Tool %r failed unexpectedly", tool_name)
+        return failure_result(
+            f"Tool '{tool_name}' failed unexpectedly",
+            error=str(exc),
+            tool=tool_name,
+            tool_input=tool_input,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -312,10 +399,8 @@ def format_tool_result(tool_use_id: str, result: Any) -> dict:
     Screenshots are sent as ``image`` content blocks; all other results are
     serialised to a text string.
 
-    :param tool_use_id: The ``id`` from the tool-use block in the API response.
-    :type tool_use_id: str
-    :param result: Raw return value from :func:`dispatch`.
-    :type result: Any
+    :param str tool_use_id: The ``id`` from the tool-use block in the API response.
+    :param Any result: Raw return value from :func:`dispatch`.
     :returns: A ``tool_result`` dict ready to append to the messages list.
     :rtype: dict
     """

@@ -21,7 +21,7 @@ Typical usage::
     asyncio.run(main())
 """
 
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import PackageNotFoundError, version
 
 try:
     __version__: str = version("tot-agent")
