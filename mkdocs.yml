@@ -77,14 +77,22 @@ nav:
   - Getting Started:
       - Installation: installation.md
       - Usage Guide: usage.md
+      - Setting Up Test Users: test-users.md
+      - Adding a Platform: adding-a-platform.md
   - API Reference:
       - Overview: api/index.md
-      - agent: api/agent.md
-      - browser: api/browser.md
-      - covers: api/covers.md
-      - tools: api/tools.md
-      - config: api/config.md
-      - cli: api/cli.md
+      - Scripted flow:
+          - flow: api/flow.md
+          - platform: api/platform.md
+      - Agentic:
+          - agent: api/agent.md
+          - tools: api/tools.md
+      - Shared:
+          - browser: api/browser.md
+          - covers: api/covers.md
+          - results: api/results.md
+          - config: api/config.md
+          - cli: api/cli.md
   - Design:
       - Software Design: design/software-design.md
       - Requirements (SRS): design/srs.md

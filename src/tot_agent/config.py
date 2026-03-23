@@ -51,6 +51,7 @@ ROUTES: dict[str, str] = {
     "tests": "/tests",
     "create_test": "/tests/new",
     "dashboard": "/",
+    "logout": "/logout",
 }
 """Relative route paths.  Override in a subclass or at runtime to match your
 application's URL structure."""
@@ -126,11 +127,11 @@ class SimUser:
 
 
 SIM_USERS: list[SimUser] = [
-    SimUser("admin", "admin123", "Admin", voting_bias="random"),
-    SimUser("alice", "password1", "Alice", voting_bias="prefers_illustrated"),
-    SimUser("bob", "password2", "Bob", voting_bias="prefers_dark"),
-    SimUser("carol", "password3", "Carol", voting_bias="prefers_bright"),
-    SimUser("dave", "password4", "Dave", voting_bias="random"),
+    SimUser("test1@finalstatepress.com", "testuser1970", "Test1", voting_bias="random"),
+    SimUser("test2@finalstatepress.com", "test2user1970", "Test2", voting_bias="prefers_illustrated"),
+    SimUser("test3@finalstatepress.com", "test3user1970", "Test3", voting_bias="prefers_dark"),
+    SimUser("test4@finalstatepress.com", "test4user1970", "Test4", voting_bias="prefers_bright"),
+    SimUser("test5@finalstatepress.com", "test5user1970", "Test5", voting_bias="random"),
 ]
 """Default roster of simulated users.  Edit this list to match the accounts
 that exist (or that you will create) on your dev site."""

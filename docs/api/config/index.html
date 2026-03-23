@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://mattbriggs.github.io/this-or-that-agent/api/config/">
       
       
-        <link rel="prev" href="../tools/">
+        <link rel="prev" href="../results/">
       
       
         <link rel="next" href="../cli/">
@@ -699,6 +699,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -769,6 +797,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Environment variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-timeout-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser timeout variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -866,6 +911,50 @@
     <span class="md-ellipsis">
       
         MAX_AGENT_STEPS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tot_agent.config.NAVIGATION_TIMEOUT_MS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NAVIGATION_TIMEOUT_MS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tot_agent.config.ACTION_TIMEOUT_MS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ACTION_TIMEOUT_MS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tot_agent.config.WAIT_FOR_ELEMENT_TIMEOUT_MS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WAIT_FOR_ELEMENT_TIMEOUT_MS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tot_agent.config.PAGE_READY_TIMEOUT_MS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PAGE_READY_TIMEOUT_MS
       
     </span>
   </a>
@@ -1206,6 +1295,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Environment variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-timeout-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Browser timeout variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1302,6 +1408,50 @@
     <span class="md-ellipsis">
       
         MAX_AGENT_STEPS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tot_agent.config.NAVIGATION_TIMEOUT_MS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NAVIGATION_TIMEOUT_MS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tot_agent.config.ACTION_TIMEOUT_MS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ACTION_TIMEOUT_MS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tot_agent.config.WAIT_FOR_ELEMENT_TIMEOUT_MS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WAIT_FOR_ELEMENT_TIMEOUT_MS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tot_agent.config.PAGE_READY_TIMEOUT_MS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PAGE_READY_TIMEOUT_MS
       
     </span>
   </a>
@@ -1482,6 +1632,38 @@
 </tr>
 </tbody>
 </table>
+<h3 id="browser-timeout-variables">Browser timeout variables<a class="headerlink" href="#browser-timeout-variables" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NAVIGATION_TIMEOUT_MS</code></td>
+<td><code>30000</code></td>
+<td>Playwright page navigation timeout (ms)</td>
+</tr>
+<tr>
+<td><code>ACTION_TIMEOUT_MS</code></td>
+<td><code>10000</code></td>
+<td>Playwright element action timeout (ms)</td>
+</tr>
+<tr>
+<td><code>WAIT_FOR_ELEMENT_TIMEOUT_MS</code></td>
+<td><code>15000</code></td>
+<td><code>wait_for_selector</code> timeout (ms)</td>
+</tr>
+<tr>
+<td><code>PAGE_READY_TIMEOUT_MS</code></td>
+<td><code>10000</code></td>
+<td><code>wait_for_load_state</code> timeout (ms)</td>
+</tr>
+</tbody>
+</table>
 <h2 id="module-reference">Module reference<a class="headerlink" href="#module-reference" title="Permanent link">&para;</a></h2>
 
 
@@ -1510,7 +1692,15 @@ out-of-the-box for a standard local development setup.</p>
 <code>AGENT_MODEL</code>
     Claude model identifier.  Defaults to <code>claude-opus-4-5</code>.
 <code>MAX_AGENT_STEPS</code>
-    Hard ceiling on tool-call iterations per agent run.  Defaults to <code>40</code>.</p>
+    Hard ceiling on tool-call iterations per agent run.  Defaults to <code>40</code>.
+<code>NAVIGATION_TIMEOUT_MS</code>
+    Timeout for page navigation and route transitions.
+<code>ACTION_TIMEOUT_MS</code>
+    Timeout for click/fill/select interactions.
+<code>WAIT_FOR_ELEMENT_TIMEOUT_MS</code>
+    Timeout for explicit selector waits.
+<code>PAGE_READY_TIMEOUT_MS</code>
+    Best-effort timeout for waiting on a new DOM-ready state after an action.</p>
 
 
 
@@ -1659,6 +1849,94 @@ variable.  Raises :class:<code>RuntimeError</code> at agent construction time if
     <div class="doc doc-contents ">
 
         <p>Maximum number of tool-call iterations before the agent gives up.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="tot_agent.config.NAVIGATION_TIMEOUT_MS" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">NAVIGATION_TIMEOUT_MS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;NAVIGATION_TIMEOUT_MS&#39;</span><span class="p">,</span> <span class="s1">&#39;15000&#39;</span><span class="p">))</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#tot_agent.config.NAVIGATION_TIMEOUT_MS" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Navigation timeout in milliseconds.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="tot_agent.config.ACTION_TIMEOUT_MS" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">ACTION_TIMEOUT_MS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;ACTION_TIMEOUT_MS&#39;</span><span class="p">,</span> <span class="s1">&#39;5000&#39;</span><span class="p">))</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#tot_agent.config.ACTION_TIMEOUT_MS" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Default timeout for click/fill/select interactions in milliseconds.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="tot_agent.config.WAIT_FOR_ELEMENT_TIMEOUT_MS" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">WAIT_FOR_ELEMENT_TIMEOUT_MS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;WAIT_FOR_ELEMENT_TIMEOUT_MS&#39;</span><span class="p">,</span> <span class="s1">&#39;8000&#39;</span><span class="p">))</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#tot_agent.config.WAIT_FOR_ELEMENT_TIMEOUT_MS" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Default timeout for explicit selector waits in milliseconds.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="tot_agent.config.PAGE_READY_TIMEOUT_MS" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">PAGE_READY_TIMEOUT_MS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;PAGE_READY_TIMEOUT_MS&#39;</span><span class="p">,</span> <span class="s1">&#39;4000&#39;</span><span class="p">))</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#tot_agent.config.PAGE_READY_TIMEOUT_MS" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Best-effort wait time for DOM readiness after a form submission or click.</p>
 
     </div>
 
@@ -1910,26 +2188,7 @@ One of <code>"random"</code>, <code>"prefers_dark"</code>, <code>"prefers_bright
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/tot_agent/config.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-78"> 78</a></span>
-<span class="normal"><a href="#__codelineno-0-79"> 79</a></span>
-<span class="normal"><a href="#__codelineno-0-80"> 80</a></span>
-<span class="normal"><a href="#__codelineno-0-81"> 81</a></span>
-<span class="normal"><a href="#__codelineno-0-82"> 82</a></span>
-<span class="normal"><a href="#__codelineno-0-83"> 83</a></span>
-<span class="normal"><a href="#__codelineno-0-84"> 84</a></span>
-<span class="normal"><a href="#__codelineno-0-85"> 85</a></span>
-<span class="normal"><a href="#__codelineno-0-86"> 86</a></span>
-<span class="normal"><a href="#__codelineno-0-87"> 87</a></span>
-<span class="normal"><a href="#__codelineno-0-88"> 88</a></span>
-<span class="normal"><a href="#__codelineno-0-89"> 89</a></span>
-<span class="normal"><a href="#__codelineno-0-90"> 90</a></span>
-<span class="normal"><a href="#__codelineno-0-91"> 91</a></span>
-<span class="normal"><a href="#__codelineno-0-92"> 92</a></span>
-<span class="normal"><a href="#__codelineno-0-93"> 93</a></span>
-<span class="normal"><a href="#__codelineno-0-94"> 94</a></span>
-<span class="normal"><a href="#__codelineno-0-95"> 95</a></span>
-<span class="normal"><a href="#__codelineno-0-96"> 96</a></span>
-<span class="normal"><a href="#__codelineno-0-97"> 97</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-97"> 97</a></span>
 <span class="normal"><a href="#__codelineno-0-98"> 98</a></span>
 <span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
 <span class="normal"><a href="#__codelineno-0-100">100</a></span>
@@ -1942,39 +2201,50 @@ One of <code>"random"</code>, <code>"prefers_dark"</code>, <code>"prefers_bright
 <span class="normal"><a href="#__codelineno-0-107">107</a></span>
 <span class="normal"><a href="#__codelineno-0-108">108</a></span>
 <span class="normal"><a href="#__codelineno-0-109">109</a></span>
-<span class="normal"><a href="#__codelineno-0-110">110</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="nd">@dataclass</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="k">class</span><span class="w"> </span><span class="nc">SimUser</span><span class="p">:</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A simulated user account used during automated testing.</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">    :param username: Login username.</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">    :type username: str</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">    :param password: Login password.</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">    :type password: str</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">    :param display_name: Human-readable name shown in logs.  Defaults to</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">        *username* when blank.</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a><span class="sd">    :type display_name: str</span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">    :param voting_bias: Personality hint fed to the agent when casting votes.</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        One of ``&quot;random&quot;``, ``&quot;prefers_dark&quot;``, ``&quot;prefers_bright&quot;``, or</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        ``&quot;prefers_illustrated&quot;``.</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">    :type voting_bias: str</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a>    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a>    <span class="n">display_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a>    <span class="n">voting_bias</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;random&quot;</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure *display_name* falls back to *username* when left blank.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="p">:</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;SimUser created: </span><span class="si">%s</span><span class="s2"> (bias=</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">voting_bias</span><span class="p">)</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>        <span class="k">return</span> <span class="p">(</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a>            <span class="sa">f</span><span class="s2">&quot;SimUser(username=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="si">!r}</span><span class="s2">, display_name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="si">!r}</span><span class="s2">, &quot;</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a>            <span class="sa">f</span><span class="s2">&quot;voting_bias=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">voting_bias</span><span class="si">!r}</span><span class="s2">)&quot;</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a>        <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-110">110</a></span>
+<span class="normal"><a href="#__codelineno-0-111">111</a></span>
+<span class="normal"><a href="#__codelineno-0-112">112</a></span>
+<span class="normal"><a href="#__codelineno-0-113">113</a></span>
+<span class="normal"><a href="#__codelineno-0-114">114</a></span>
+<span class="normal"><a href="#__codelineno-0-115">115</a></span>
+<span class="normal"><a href="#__codelineno-0-116">116</a></span>
+<span class="normal"><a href="#__codelineno-0-117">117</a></span>
+<span class="normal"><a href="#__codelineno-0-118">118</a></span>
+<span class="normal"><a href="#__codelineno-0-119">119</a></span>
+<span class="normal"><a href="#__codelineno-0-120">120</a></span>
+<span class="normal"><a href="#__codelineno-0-121">121</a></span>
+<span class="normal"><a href="#__codelineno-0-122">122</a></span>
+<span class="normal"><a href="#__codelineno-0-123">123</a></span>
+<span class="normal"><a href="#__codelineno-0-124">124</a></span>
+<span class="normal"><a href="#__codelineno-0-125">125</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="k">class</span><span class="w"> </span><span class="nc">SimUser</span><span class="p">:</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A simulated user account used during automated testing.</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">    :param str username: Login username.</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">    :param str password: Login password.</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">    :param str display_name: Human-readable name shown in logs.  Defaults to</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="sd">        *username* when blank.</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">    :param str voting_bias: Personality hint fed to the agent when casting votes.</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">        One of ``&quot;random&quot;``, ``&quot;prefers_dark&quot;``, ``&quot;prefers_bright&quot;``, or</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">        ``&quot;prefers_illustrated&quot;``.</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a>    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111"></a>    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a>    <span class="n">display_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a>    <span class="n">voting_bias</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;random&quot;</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a>
+<a id="__codelineno-0-115" name="__codelineno-0-115"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure *display_name* falls back to *username* when left blank.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="p">:</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;SimUser created: </span><span class="si">%s</span><span class="s2"> (bias=</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">voting_bias</span><span class="p">)</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a>        <span class="k">return</span> <span class="p">(</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a>            <span class="sa">f</span><span class="s2">&quot;SimUser(username=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="si">!r}</span><span class="s2">, display_name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a>            <span class="sa">f</span><span class="s2">&quot;voting_bias=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">voting_bias</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+<a id="__codelineno-0-125" name="__codelineno-0-125"></a>        <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -2007,15 +2277,15 @@ One of <code>"random"</code>, <code>"prefers_dark"</code>, <code>"prefers_bright
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/tot_agent/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-100">100</a></span>
-<span class="normal"><a href="#__codelineno-0-101">101</a></span>
-<span class="normal"><a href="#__codelineno-0-102">102</a></span>
-<span class="normal"><a href="#__codelineno-0-103">103</a></span>
-<span class="normal"><a href="#__codelineno-0-104">104</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure *display_name* falls back to *username* when left blank.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="p">:</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;SimUser created: </span><span class="si">%s</span><span class="s2"> (bias=</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">voting_bias</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-115">115</a></span>
+<span class="normal"><a href="#__codelineno-0-116">116</a></span>
+<span class="normal"><a href="#__codelineno-0-117">117</a></span>
+<span class="normal"><a href="#__codelineno-0-118">118</a></span>
+<span class="normal"><a href="#__codelineno-0-119">119</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure *display_name* falls back to *username* when left blank.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="p">:</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
+<a id="__codelineno-0-119" name="__codelineno-0-119"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;SimUser created: </span><span class="si">%s</span><span class="s2"> (bias=</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">voting_bias</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2101,31 +2371,29 @@ One of <code>"random"</code>, <code>"prefers_dark"</code>, <code>"prefers_bright
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/tot_agent/config.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-124">124</a></span>
-<span class="normal"><a href="#__codelineno-0-125">125</a></span>
-<span class="normal"><a href="#__codelineno-0-126">126</a></span>
-<span class="normal"><a href="#__codelineno-0-127">127</a></span>
-<span class="normal"><a href="#__codelineno-0-128">128</a></span>
-<span class="normal"><a href="#__codelineno-0-129">129</a></span>
-<span class="normal"><a href="#__codelineno-0-130">130</a></span>
-<span class="normal"><a href="#__codelineno-0-131">131</a></span>
-<span class="normal"><a href="#__codelineno-0-132">132</a></span>
-<span class="normal"><a href="#__codelineno-0-133">133</a></span>
-<span class="normal"><a href="#__codelineno-0-134">134</a></span>
-<span class="normal"><a href="#__codelineno-0-135">135</a></span>
-<span class="normal"><a href="#__codelineno-0-136">136</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">SimUser</span><span class="p">]:</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Look up a :class:`SimUser` by username.</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>
-<a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="sd">    :param username: The username to search for.</span>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="sd">    :type username: str</span>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a><span class="sd">    :returns: The matching :class:`SimUser`, or ``None`` if not found.</span>
-<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">    :rtype: SimUser or None</span>
-<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a>    <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">SIM_USERS</span><span class="p">:</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a>        <span class="k">if</span> <span class="n">user</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">:</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a>            <span class="k">return</span> <span class="n">user</span>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;User </span><span class="si">%r</span><span class="s2"> not found in SIM_USERS&quot;</span><span class="p">,</span> <span class="n">username</span><span class="p">)</span>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="k">return</span> <span class="kc">None</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-139">139</a></span>
+<span class="normal"><a href="#__codelineno-0-140">140</a></span>
+<span class="normal"><a href="#__codelineno-0-141">141</a></span>
+<span class="normal"><a href="#__codelineno-0-142">142</a></span>
+<span class="normal"><a href="#__codelineno-0-143">143</a></span>
+<span class="normal"><a href="#__codelineno-0-144">144</a></span>
+<span class="normal"><a href="#__codelineno-0-145">145</a></span>
+<span class="normal"><a href="#__codelineno-0-146">146</a></span>
+<span class="normal"><a href="#__codelineno-0-147">147</a></span>
+<span class="normal"><a href="#__codelineno-0-148">148</a></span>
+<span class="normal"><a href="#__codelineno-0-149">149</a></span>
+<span class="normal"><a href="#__codelineno-0-150">150</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimUser</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Look up a :class:`SimUser` by username.</span>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a>
+<a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">    :param str username: The username to search for.</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">    :returns: The matching :class:`SimUser`, or ``None`` if not found.</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">    :rtype: SimUser or None</span>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a>    <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">SIM_USERS</span><span class="p">:</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a>        <span class="k">if</span> <span class="n">user</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">:</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a>            <span class="k">return</span> <span class="n">user</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;User </span><span class="si">%r</span><span class="s2"> not found in SIM_USERS&quot;</span><span class="p">,</span> <span class="n">username</span><span class="p">)</span>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a>    <span class="k">return</span> <span class="kc">None</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
