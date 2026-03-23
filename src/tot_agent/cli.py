@@ -235,6 +235,54 @@ def goal(ctx: click.Context, goal_text: str, headless: bool) -> None:
 
 
 @cli.command()
+@click.option(
+    "--users", "n_users",
+    default=1,
+    show_default=True,
+    help="Number of randomly chosen users to run the flow for.",
+)
+@click.option("--headless", is_flag=True, help="Run browser without visible window.")
+@click.pass_context
+def contest(ctx: click.Context, n_users: int, headless: bool) -> None:
+    """Create contests via the scripted direct flow (no agentic loop).
+
+    Randomly selects N users from the configured roster, fetches a fresh book
+    cover pair for each, and submits the contest-creation form step-by-step
+    using Playwright.  Each run ends with a logout before the next user begins.
+
+    To target a different platform, pass a custom PlatformConfig to
+    run_multi_user_flow() in your own script.  See docs/adding-a-platform.md.
+    """
+    import asyncio
+
+    import tot_agent.config as _cfg
+    from tot_agent.browser import BrowserManager
+    from tot_agent.flow import run_multi_user_flow
+    from tot_agent.platform import THIS_OR_THAT
+
+    effective_url = ctx.obj["site_url"] or _cfg.SITE_URL
+
+    async def _run() -> None:
+        async with BrowserManager(headless=headless, site_url=effective_url) as bm:
+            results = await run_multi_user_flow(
+                bm, n_users=n_users, platform=THIS_OR_THAT
+            )
+        table = Table(
+            title="Contest Creation Results",
+            show_header=True,
+            header_style="bold cyan",
+        )
+        table.add_column("User")
+        table.add_column("Result")
+        for username, ok in results.items():
+            status = "[green]OK[/green]" if ok else "[red]FAILED[/red]"
+            table.add_row(username, status)
+        console.print(table)
+
+    asyncio.run(_run())
+
+
+@cli.command()
 def users() -> None:
     """List all configured simulated users."""
     from tot_agent.config import SIM_USERS

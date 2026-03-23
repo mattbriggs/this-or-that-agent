@@ -51,6 +51,7 @@ ROUTES: dict[str, str] = {
     "tests": "/tests",
     "create_test": "/tests/new",
     "dashboard": "/",
+    "logout": "/logout",
 }
 """Relative route paths.  Override in a subclass or at runtime to match your
 application's URL structure."""
